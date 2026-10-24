@@ -102,6 +102,11 @@ class AuditLogModel(Base):
     input_summary = Column(Text, nullable=False)
     output_summary = Column(Text, nullable=False)
     reason = Column(Text, nullable=False)
+    entry_type = Column(String, default="agent_step")
+    actor = Column(String, default="System")
+    duration_ms = Column(Float, default=0.0)
+    previous_hash = Column(String(64), nullable=True)
+    entry_hash = Column(String(64), nullable=True)
 
     employee = relationship("EmployeeModel", back_populates="audit_logs")
 

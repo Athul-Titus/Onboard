@@ -501,14 +501,14 @@ def get_hire(id: str, db: Session = Depends(get_db)):
             timestamp=log.timestamp,
             agent=log.agent,
             action=log.action,
-            entry_type=log.entry_type or "agent_step",
-            actor=log.actor or "System",
-            duration_ms=log.duration_ms or 0.0,
+            entry_type=getattr(log, "entry_type", None) or "agent_step",
+            actor=getattr(log, "actor", None) or "System",
+            duration_ms=getattr(log, "duration_ms", None) or 0.0,
             input_summary=log.input_summary,
             output_summary=log.output_summary,
             reason=log.reason,
-            previous_hash=log.previous_hash,
-            entry_hash=log.entry_hash
+            previous_hash=getattr(log, "previous_hash", None),
+            entry_hash=getattr(log, "entry_hash", None)
         )
         for log in sorted(emp.audit_logs, key=lambda x: x.timestamp)
     ]
