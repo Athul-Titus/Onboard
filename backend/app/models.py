@@ -72,6 +72,13 @@ class AssignmentModel(Base):
     overridden = Column(Boolean, default=False)
     candidates_json = Column(Text, default="[]")
     status = Column(String, default="waiting_approval")
+    recommended_team = Column(String, nullable=True)
+    recommended_score = Column(Float, nullable=True)
+    chosen_team = Column(String, nullable=True)
+    chosen_score = Column(Float, nullable=True)
+    override_reason = Column(Text, nullable=True)
+    approved_at = Column(String, nullable=True)
+    extra_data_json = Column(Text, default="{}")
     created_at = Column(DateTime, default=utc_now)
 
     employee = relationship("EmployeeModel", back_populates="assignment")

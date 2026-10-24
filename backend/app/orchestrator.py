@@ -27,6 +27,7 @@ from backend.app.agents.identity_agent import IdentityAgent
 from backend.app.agents.skill_manager import skill_manager
 from backend.app.agents.project_manager import project_manager
 from backend.app.agents.guide_manager import guide_manager
+from backend.app.tools.scoring import compute_team_scores
 
 logger = logging.getLogger(__name__)
 
@@ -265,13 +266,38 @@ class WorkflowOrchestrator:
 
         try:
             skills_data = json.loads(smap_model.skills_json or "[]")
-            skill_names = [s["skill"] for s in skills_data]
 
-            assignment = project_manager.assign_team_and_project(employee_id, skill_names)
+            def pm_audit_callback(e_id: str, agent: str, action: str, input_sum: str, output_sum: str, reason: str = ""):
+                self.log_audit(
+                    db,
+                    employee_id=e_id,
+                    agent=agent,
+                    action=action,
+                    input_summary=input_sum,
+                    output_summary=output_sum,
+                    reason=reason
+                )
+
+            assignment = project_manager.assign_team_and_project(
+                employee_id=employee_id,
+                hire_skills=skills_data,
+                audit_callback=pm_audit_callback
+            )
 
             existing = db.query(AssignmentModel).filter(AssignmentModel.employee_id == employee_id).first()
             score_json = json.dumps(assignment.score_breakdown)
             cands_json = json.dumps([c.model_dump() for c in assignment.candidates])
+            extra_dict = {
+                "insufficient_data": assignment.insufficient_data,
+                "weak_fit": assignment.weak_fit,
+                "close_call": assignment.close_call,
+                "all_teams_zero_capacity": assignment.all_teams_zero_capacity,
+                "structured_rationale": assignment.structured_rationale.model_dump() if assignment.structured_rationale else None,
+                "recommended_project": assignment.recommended_project,
+            }
+            extra_json = json.dumps(extra_dict)
+
+            rec_score = assignment.candidates[0].display_score if assignment.candidates else 0.0
 
             if existing:
                 existing.team = assignment.team
@@ -279,7 +305,12 @@ class WorkflowOrchestrator:
                 existing.score_breakdown_json = score_json
                 existing.reason = assignment.reason
                 existing.candidates_json = cands_json
-                existing.status = "waiting_approval"
+                existing.recommended_team = assignment.team
+                existing.recommended_score = rec_score
+                existing.chosen_team = assignment.team
+                existing.chosen_score = rec_score
+                existing.extra_data_json = extra_json
+                existing.status = "needs_attention" if assignment.insufficient_data else "waiting_approval"
             else:
                 new_assign = AssignmentModel(
                     id=str(uuid.uuid4()),
@@ -289,18 +320,29 @@ class WorkflowOrchestrator:
                     score_breakdown_json=score_json,
                     reason=assignment.reason,
                     candidates_json=cands_json,
-                    status="waiting_approval"
+                    recommended_team=assignment.team,
+                    recommended_score=rec_score,
+                    chosen_team=assignment.team,
+                    chosen_score=rec_score,
+                    extra_data_json=extra_json,
+                    status="needs_attention" if assignment.insufficient_data else "waiting_approval"
                 )
                 db.add(new_assign)
+
+            db.commit()
+
+            if assignment.insufficient_data:
+                self.update_step_status(db, emp, "assignment", "needs_attention", error="insufficient_data: No candidate skills extracted to compute placement.")
+                return assignment
 
             self.log_audit(
                 db,
                 employee_id=employee_id,
                 agent="Project Manager",
                 action="rank_and_assign_team",
-                input_summary=f"{len(skill_names)} candidate skills, 5 teams, 8 projects",
-                output_summary=f"Top Match: '{assignment.team}' for '{assignment.project}' (Score: {assignment.score_breakdown.get('total_score')})",
-                reason=f"Top ranking determined deterministically. Rationale: {assignment.reason[:100]}..."
+                input_summary=f"{len(skills_data)} candidate skills, 5 teams, 8 projects",
+                output_summary=f"Top Match: '{assignment.team}' for '{assignment.project}' (Display Score: {assignment.score_breakdown.get('display_score') or assignment.score_breakdown.get('total_score')})",
+                reason=f"Top ranking determined deterministically ({assignment.score_breakdown.get('label')}). Rationale: {assignment.reason[:100]}..."
             )
 
             self.update_step_status(db, emp, "assignment", "waiting_approval")
@@ -309,55 +351,123 @@ class WorkflowOrchestrator:
         except Exception as exc:
             logger.error(f"Error in assignment step: {exc}")
             self.update_step_status(db, emp, "assignment", "needs_attention", error=str(exc))
+            self.log_audit(
+                db,
+                employee_id=employee_id,
+                agent="Project Manager",
+                action="assignment_failed",
+                input_summary=f"Assignment for {emp.name}",
+                output_summary="Failed to compute assignment",
+                reason=str(exc)
+            )
             raise
 
     def approve_assignment_step(self, db: Session, employee_id: str, manager_name: str) -> AssignmentModel:
-        """Manager approves the team assignment."""
+        """Manager approves the team assignment and triggers the Guide Manager with the chosen team."""
         assign = db.query(AssignmentModel).filter(AssignmentModel.employee_id == employee_id).first()
         emp = db.query(EmployeeModel).filter(EmployeeModel.id == employee_id).first()
         if not assign or not emp:
             raise ValueError("Assignment not found")
 
+        approved_timestamp = utc_iso()
         assign.approved_by = manager_name
+        assign.approved_at = approved_timestamp
         assign.status = "done"
+        if not assign.chosen_team:
+            assign.chosen_team = assign.team
+        if not assign.chosen_score:
+            assign.chosen_score = assign.recommended_score
+
         self.update_step_status(db, emp, "assignment", "done")
+        db.commit()
 
         self.log_audit(
             db,
             employee_id=employee_id,
             agent="Project Manager",
             action="approve_assignment",
-            input_summary=f"Approved by {manager_name}",
-            output_summary=f"Confirmed placement in {assign.team} ({assign.project})",
-            reason="Manager signed off on team placement."
+            input_summary=f"Approved by {manager_name} at {approved_timestamp}",
+            output_summary=f"Confirmed placement in {assign.team} ({assign.project}) [Score: {assign.chosen_score or 'N/A'}]",
+            reason=f"Manager signed off on team placement. Handoff to Guide Manager triggered for {assign.team}."
         )
+
+        # Trigger Guide Manager with chosen team
+        try:
+            self.run_guide_step(db, employee_id)
+        except Exception as guide_exc:
+            logger.error(f"Failed to auto-trigger guide step after assignment approval: {guide_exc}")
+
         return assign
 
     def override_assignment_step(self, db: Session, employee_id: str, manager_name: str, team: str, project: str, reason: str) -> AssignmentModel:
-        """Manager overrides the automated team placement."""
+        """Manager overrides the automated team placement with audited justification (min 10 chars)."""
+        if not reason or len(reason.strip()) < 10:
+            raise ValueError("Override justification reason must be at least 10 characters.")
+
         assign = db.query(AssignmentModel).filter(AssignmentModel.employee_id == employee_id).first()
         emp = db.query(EmployeeModel).filter(EmployeeModel.id == employee_id).first()
         if not assign or not emp:
             raise ValueError("Assignment not found")
 
-        prev_team = assign.team
+        # Validate that team and project exist in seed data
+        valid_teams = [t["name"] for t in project_manager.teams]
+        valid_projects = [p["name"] for p in project_manager.projects]
+        if team not in valid_teams:
+            raise ValueError(f"Team '{team}' does not exist in seed teams ({valid_teams}).")
+        if project not in valid_projects:
+            raise ValueError(f"Project '{project}' does not exist in seed projects.")
+
+        # Compute chosen score for the overridden team/project
+        chosen_score = None
+        smap_model = db.query(SkillMapModel).filter(SkillMapModel.employee_id == employee_id).first()
+        if smap_model and smap_model.skills_json:
+            try:
+                skills_data = json.loads(smap_model.skills_json or "[]")
+                scored = compute_team_scores(skills_data, project_manager.teams, project_manager.projects)
+                for cand in scored:
+                    if cand["team"] == team:
+                        chosen_score = cand["display_score"]
+                        break
+            except Exception as e:
+                logger.warning(f"Could not calculate chosen team score on override: {e}")
+
+        approved_timestamp = utc_iso()
+        prev_team = assign.recommended_team or assign.team
+        prev_score = assign.recommended_score
+
+        assign.recommended_team = prev_team
+        assign.recommended_score = prev_score
         assign.team = team
         assign.project = project
+        assign.chosen_team = team
+        assign.chosen_project = project
+        assign.chosen_score = chosen_score
+        assign.override_reason = reason.strip()
         assign.overridden = True
         assign.approved_by = manager_name
-        assign.reason = f"Manager Override by {manager_name}: {reason}"
+        assign.approved_at = approved_timestamp
+        assign.reason = f"Manager Override by {manager_name}: {reason.strip()}"
         assign.status = "done"
+
         self.update_step_status(db, emp, "assignment", "done")
+        db.commit()
 
         self.log_audit(
             db,
             employee_id=employee_id,
             agent="Project Manager",
             action="override_assignment",
-            input_summary=f"Override from '{prev_team}' to '{team}' ({project}) by {manager_name}",
-            output_summary=f"Assigned to {team}",
-            reason=f"Manager justification: {reason}"
+            input_summary=f"Override recommended '{prev_team}' ({prev_score or 'N/A'}) to chosen '{team}' ({chosen_score or 'N/A'}) by {manager_name}",
+            output_summary=f"Assigned to {team} ({project}) at {approved_timestamp}",
+            reason=f"Manager justification: {reason.strip()}"
         )
+
+        # Trigger Guide Manager with chosen team
+        try:
+            self.run_guide_step(db, employee_id)
+        except Exception as guide_exc:
+            logger.error(f"Failed to auto-trigger guide step after assignment override: {guide_exc}")
+
         return assign
 
     def run_guide_step(self, db: Session, employee_id: str) -> Guide:

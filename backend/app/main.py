@@ -208,6 +208,7 @@ def get_hire(id: str, db: Session = Depends(get_db)):
         try:
             breakdown = json.loads(emp.assignment.score_breakdown_json or "{}")
             cands = json.loads(emp.assignment.candidates_json or "[]")
+            extra = json.loads(emp.assignment.extra_data_json or "{}")
             assignment = Assignment(
                 employee_id=emp.id,
                 team=emp.assignment.team,
@@ -217,7 +218,20 @@ def get_hire(id: str, db: Session = Depends(get_db)):
                 approved_by=emp.assignment.approved_by,
                 overridden=emp.assignment.overridden,
                 candidates=cands,
-                status=emp.assignment.status
+                status=emp.assignment.status,
+                recommended_team=emp.assignment.recommended_team,
+                recommended_project=extra.get("recommended_project") or emp.assignment.project,
+                recommended_score=emp.assignment.recommended_score,
+                chosen_team=emp.assignment.chosen_team or emp.assignment.team,
+                chosen_project=emp.assignment.chosen_project or emp.assignment.project,
+                chosen_score=emp.assignment.chosen_score,
+                override_reason=emp.assignment.override_reason,
+                approved_at=emp.assignment.approved_at,
+                insufficient_data=extra.get("insufficient_data", False),
+                weak_fit=extra.get("weak_fit", False),
+                close_call=extra.get("close_call", False),
+                all_teams_zero_capacity=extra.get("all_teams_zero_capacity", False),
+                structured_rationale=extra.get("structured_rationale")
             )
         except Exception as e:
             logger.error(f"Error parsing assignment: {e}")
@@ -299,6 +313,15 @@ def override_assignment(id: str, req: OverrideAssignmentRequest, db: Session = D
     """Manager override for team and project placement with audited justification."""
     res = orchestrator.override_assignment_step(db, id, req.manager_name, req.team, req.project, req.reason)
     return {"status": "overridden", "team": res.team, "project": res.project, "reason": res.reason}
+
+@app.get("/options/teams-and-projects")
+def get_teams_and_projects():
+    """Returns available teams and starter projects for placement override."""
+    from backend.app.agents.project_manager import project_manager
+    return {
+        "teams": project_manager.teams,
+        "projects": project_manager.projects
+    }
 
 @app.get("/hires/{id}/export", response_class=PlainTextResponse)
 def export_hire_package(id: str, db: Session = Depends(get_db)):
