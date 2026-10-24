@@ -133,6 +133,49 @@ Contact: +1-555-0199, 123 Tech Lane, San Francisco CA, john.personal@gmail.com, 
     }
   };
 
+  // Load Prepared Sample Hires
+  const loadSampleHire = (sampleKey) => {
+    setIntakeErrors({});
+    setResumeUploadError(null);
+    setResumeFileName('');
+
+    if (sampleKey === 'with_github') {
+      setFormData({
+        name: 'Jordan Hayes',
+        role: 'Backend',
+        startDate: '2026-11-15',
+        githubUsername: 'octocat',
+        resumeText: `Jordan Hayes
+Senior Distributed Systems Engineer with 6 years experience architecting scalable microservices and transactional platforms.
+Technical Skills: Python, FastAPI, Docker, Kubernetes, PostgreSQL, Redis, AWS, REST APIs, Git, Kafka.
+Key Projects:
+- Architected high-throughput ledger microservice in Python/FastAPI processing 20k events/sec with Redis caching.
+- Optimized PostgreSQL database indexes and configured query connection pooling, cutting p99 latency by 65%.
+- Implemented zero-downtime Kubernetes rolling deployment pipelines on AWS EKS with Prometheus monitoring.
+Certifications: AWS Solutions Architect Associate, Certified Kubernetes Application Developer (CKAD).
+Contact: +1 (555) 432-8765, 452 Enterprise Way, Austin TX, jordan.hayes@gmail.com, DOB: 1993-11-04.`
+      });
+      setGithubCheckInfo({ status: 'valid', message: 'Sample GitHub profile linked (@octocat)' });
+    } else {
+      setFormData({
+        name: 'Elena Rostova',
+        role: 'Frontend',
+        startDate: '2026-12-01',
+        githubUsername: '',
+        resumeText: `Elena Rostova
+Lead Frontend Engineer with 7 years experience delivering design systems and performant modern web applications.
+Technical Skills: TypeScript, React, Tailwind CSS, Next.js, Jest, GraphQL, Webpack, Vite, Node.js, Accessibility (a11y).
+Key Projects:
+- Spearheaded company-wide React component design system with 50+ accessible UI components used by 12 squads.
+- Reduced initial bundle load size by 40% through code splitting, tree shaking, and modern asset optimizations.
+- Built end-to-end testing infrastructure using Jest and Playwright with 95% critical path coverage.
+Certifications: Meta Frontend Developer Professional Certificate.
+Contact: +1 (555) 987-1234, 88 Mission Boulevard, Seattle WA, elena.rostova@outlook.com, DOB: 1992-06-18.`
+      });
+      setGithubCheckInfo(null);
+    }
+  };
+
   // Override form state
   const [overrideData, setOverrideData] = useState({
     team: 'Frontend Platform',
@@ -1289,6 +1332,32 @@ Contact: +1-555-0199, 123 Tech Lane, San Francisco CA, john.personal@gmail.com, 
                 </div>
               </div>
             )}
+
+            {/* Quick Load Prepared Sample Hire */}
+            <div className="flex flex-wrap items-center justify-between gap-2 p-2.5 rounded-xl bg-slate-950/70 border border-slate-800">
+              <span className="text-[11px] font-semibold text-slate-400 flex items-center gap-1.5">
+                <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
+                Load sample hire:
+              </span>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => loadSampleHire('with_github')}
+                  className="px-2.5 py-1 rounded-lg bg-indigo-500/15 hover:bg-indigo-500/25 border border-indigo-500/30 text-indigo-300 text-[11px] font-medium transition hover:border-indigo-400 flex items-center gap-1.5"
+                >
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                  <span>Sample 1 (With GitHub)</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => loadSampleHire('without_github')}
+                  className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 text-[11px] font-medium transition hover:text-white flex items-center gap-1.5"
+                >
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-400"></span>
+                  <span>Sample 2 (Resume-Only)</span>
+                </button>
+              </div>
+            </div>
 
             <form onSubmit={handleIntakeSubmit} className="space-y-3 text-xs">
               <div>
