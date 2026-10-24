@@ -213,7 +213,7 @@ class WorkflowOrchestrator:
             # Persist skill map
             existing = db.query(SkillMapModel).filter(SkillMapModel.employee_id == employee_id).first()
             skills_json = json.dumps([s.model_dump() for s in skill_map.skills])
-            gaps_json = json.dumps(skill_map.gaps_by_team)
+            gaps_json = json.dumps({k: v.model_dump() for k, v in skill_map.gaps_by_team.items()})
 
             if existing:
                 existing.skills_json = skills_json

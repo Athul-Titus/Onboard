@@ -41,22 +41,22 @@ class SkillManager:
             return "", {"total": 0, "phone": 0, "address": 0, "email": 0, "dob": 0, "types_removed": []}
 
         # 1. Phone numbers
-        phone_pattern = r"(?:\+?\d{1,3}[-.\s]?)?(?:\(?\d{3}\)?[-.\s]?)?\d{3}[-.\s]?\d{4}"
+        phone_pattern = r"(?:\+\d{1,3}[-.\s]?)?(?:\(?\d{3}\)?[-.\s]?)?\d{3,4}[-.\s]?\d{4}\b"
         phone_matches = re.findall(phone_pattern, text)
         redacted = re.sub(phone_pattern, "[PHONE REDACTED]", text)
 
         # 2. Personal emails
-        email_pattern = r"[a-zA-Z0-9_.+-]+@(?:gmail|yahoo|outlook|hotmail|icloud|protonmail|aol)\.[a-zA-Z0-9-.]+"
+        email_pattern = r"\b[a-zA-Z0-9_.+-]+@(?:gmail|yahoo|outlook|hotmail|icloud|protonmail|aol)\.[a-zA-Z0-9-.]+\b"
         email_matches = re.findall(email_pattern, redacted, flags=re.IGNORECASE)
         redacted = re.sub(email_pattern, "[EMAIL REDACTED]", redacted, flags=re.IGNORECASE)
 
         # 3. Dates of birth
-        dob_pattern = r"(?:DOB|Date of Birth|Birthdate)\s*[:=-]?\s*[\d/-]+"
+        dob_pattern = r"\b(?:DOB|Date of Birth|Birthdate)\s*[:=-]?\s*[\d/-]+"
         dob_matches = re.findall(dob_pattern, redacted, flags=re.IGNORECASE)
         redacted = re.sub(dob_pattern, "[DOB REDACTED]", redacted, flags=re.IGNORECASE)
 
         # 4. Physical street addresses
-        address_pattern = r"\d+\s+[A-Za-z0-9\s,]+(?:Street|St|Avenue|Ave|Road|Rd|Boulevard|Blvd|Drive|Dr|Lane|Ln|Way|Court|Ct)"
+        address_pattern = r"\b\d+\s+[A-Za-z0-9\s,]+?\b(?:Street|St|Avenue|Ave|Road|Rd|Boulevard|Blvd|Drive|Dr|Lane|Ln|Way|Court|Ct|Terrace)\b"
         address_matches = re.findall(address_pattern, redacted, flags=re.IGNORECASE)
         redacted = re.sub(address_pattern, "[ADDRESS REDACTED]", redacted, flags=re.IGNORECASE)
 
