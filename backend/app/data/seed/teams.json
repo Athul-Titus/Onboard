@@ -1,7 +1,7 @@
 [
   {
     "name": "Backend Platform",
-    "description": "Core high-throughput microservices, distributed caching, databases, and enterprise APIs.",
+    "description": "[SAMPLE DATA] Core high-throughput microservices, distributed caching, databases, and enterprise REST APIs.",
     "required_skills": [
       "Python",
       "FastAPI",
@@ -17,7 +17,7 @@
   },
   {
     "name": "Frontend Platform",
-    "description": "Customer-facing web applications, shared component design system, and frontend performance.",
+    "description": "[SAMPLE DATA] Customer-facing web applications, shared component design system, and frontend performance.",
     "required_skills": [
       "TypeScript",
       "React",
@@ -32,7 +32,7 @@
   },
   {
     "name": "Data & ML Platform",
-    "description": "Real-time streaming pipelines, feature stores, LLM orchestration, and machine learning infrastructure.",
+    "description": "[SAMPLE DATA] Real-time streaming pipelines, feature stores, LLM orchestration, and machine learning infrastructure.",
     "required_skills": [
       "Python",
       "PyTorch",
@@ -48,7 +48,7 @@
   },
   {
     "name": "DevOps & Infrastructure",
-    "description": "Kubernetes clusters, CI/CD automation, cloud architecture (AWS), and platform observability.",
+    "description": "[SAMPLE DATA] Kubernetes clusters, CI/CD automation, cloud architecture (AWS), and platform observability.",
     "required_skills": [
       "Kubernetes",
       "Terraform",
@@ -64,7 +64,7 @@
   },
   {
     "name": "Mobile Platform",
-    "description": "Cross-platform and native mobile applications with offline-first synchronization and push notifications.",
+    "description": "[SAMPLE DATA] Cross-platform and native mobile applications with offline-first synchronization and push notifications.",
     "required_skills": [
       "React Native",
       "TypeScript",

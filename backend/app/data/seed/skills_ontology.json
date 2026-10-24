@@ -1,4 +1,5 @@
 {
+  "_sample_data_note": "Synthetic canonical skills ontology for OnboardOS normalization and matching demonstration.",
   "skills": [
     {"name": "Python", "category": "Languages", "aliases": ["python3", "py", "cpython"]},
     {"name": "TypeScript", "category": "Languages", "aliases": ["ts", "typescriptlang"]},
@@ -9,6 +10,7 @@
     {"name": "Kotlin", "category": "Languages", "aliases": ["kt", "kotlinlang"]},
     {"name": "Swift", "category": "Languages", "aliases": ["swift5", "swiftlang"]},
     {"name": "C++", "category": "Languages", "aliases": ["cpp", "cplusplus", "c/c++"]},
+    {"name": "C#", "category": "Languages", "aliases": ["csharp", "dotnet", ".net", "asp.net"]},
     {"name": "SQL", "category": "Languages", "aliases": ["ansi sql", "structured query language"]},
 
     {"name": "FastAPI", "category": "Backend Frameworks", "aliases": ["fast-api", "fastapi framework"]},
@@ -20,6 +22,8 @@
     {"name": "GraphQL", "category": "Backend Frameworks", "aliases": ["gql", "apollo graphql"]},
     {"name": "gRPC", "category": "Backend Frameworks", "aliases": ["protobuf", "protocol buffers"]},
     {"name": "REST APIs", "category": "Backend Frameworks", "aliases": ["restful", "rest api", "openapi", "swagger"]},
+    {"name": "Celery", "category": "Backend Frameworks", "aliases": ["celery task", "task queue", "distributed task queue"]},
+    {"name": "Node.js", "category": "Backend Frameworks", "aliases": ["nodejs", "node"]},
 
     {"name": "React", "category": "Frontend Frameworks", "aliases": ["reactjs", "react.js"]},
     {"name": "Next.js", "category": "Frontend Frameworks", "aliases": ["nextjs", "next"]},
@@ -30,6 +34,7 @@
     {"name": "CSS3", "category": "Frontend Frameworks", "aliases": ["css", "vanilla css", "sass", "scss"]},
     {"name": "State Management", "category": "Frontend Frameworks", "aliases": ["redux", "zustand", "mobx", "recoil", "pinia"]},
     {"name": "WebSockets", "category": "Frontend Frameworks", "aliases": ["socket.io", "websocket", "ws"]},
+    {"name": "Storybook", "category": "Frontend Frameworks", "aliases": ["storybook.js", "component explorer"]},
 
     {"name": "PostgreSQL", "category": "Databases", "aliases": ["postgres", "pgsql", "psql"]},
     {"name": "MySQL", "category": "Databases", "aliases": ["mariadb"]},
@@ -40,6 +45,7 @@
     {"name": "Pinecone", "category": "Databases", "aliases": ["pinecone vector db"]},
     {"name": "Cassandra", "category": "Databases", "aliases": ["scylladb", "apache cassandra"]},
     {"name": "SQLAlchemy", "category": "Databases", "aliases": ["sql alchemy", "alembic"]},
+    {"name": "SQLite", "category": "Databases", "aliases": ["sqlite3"]},
 
     {"name": "Docker", "category": "Cloud & DevOps", "aliases": ["dockerfile", "containerization", "containers"]},
     {"name": "Kubernetes", "category": "Cloud & DevOps", "aliases": ["k8s", "k8s-cluster", "helm"]},
@@ -51,6 +57,9 @@
     {"name": "Linux", "category": "Cloud & DevOps", "aliases": ["ubuntu", "bash", "shell scripting", "unix"]},
     {"name": "Prometheus", "category": "Cloud & DevOps", "aliases": ["grafana", "monitoring", "metrics"]},
     {"name": "OpenTelemetry", "category": "Cloud & DevOps", "aliases": ["otel", "distributed tracing", "jaeger"]},
+    {"name": "Helm", "category": "Cloud & DevOps", "aliases": ["helm chart", "helm3"]},
+    {"name": "Git", "category": "Cloud & DevOps", "aliases": ["git version control", "github", "git flow"]},
+    {"name": "GitHub Actions", "category": "Cloud & DevOps", "aliases": ["gh actions", "gha workflow"]},
 
     {"name": "PyTorch", "category": "AI & Data", "aliases": ["torch", "pytorch lightning"]},
     {"name": "TensorFlow", "category": "AI & Data", "aliases": ["tf", "keras"]},
@@ -62,18 +71,24 @@
     {"name": "Vector Embeddings", "category": "AI & Data", "aliases": ["sentence-transformers", "embeddings", "semantic search"]},
     {"name": "Machine Learning", "category": "AI & Data", "aliases": ["ml", "deep learning", "ai model"]},
     {"name": "LangChain", "category": "AI & Data", "aliases": ["langchain", "langgraph", "llamaindex"]},
+    {"name": "Airflow", "category": "AI & Data", "aliases": ["apache airflow", "dag orchestration"]},
+    {"name": "HuggingFace", "category": "AI & Data", "aliases": ["transformers", "hf", "hugging face"]},
 
     {"name": "React Native", "category": "Mobile", "aliases": ["react-native", "expo", "rn"]},
     {"name": "Flutter", "category": "Mobile", "aliases": ["dart", "flutter framework"]},
     {"name": "iOS / Swift", "category": "Mobile", "aliases": ["xcode", "uikit", "swiftui", "ios development"]},
     {"name": "Android / Kotlin", "category": "Mobile", "aliases": ["android sdk", "jetpack compose", "android studio"]},
     {"name": "Mobile Architecture", "category": "Mobile", "aliases": ["offline-first", "mobile security", "mvvm mobile"]},
+    {"name": "Expo", "category": "Mobile", "aliases": ["expo cli", "expo managed"]},
 
     {"name": "System Design", "category": "Architecture & Engineering Practices", "aliases": ["high level design", "distributed systems", "microservices architecture"]},
     {"name": "Security", "category": "Architecture & Engineering Practices", "aliases": ["appsec", "owasp", "oauth", "jwt", "cybersecurity", "encryption"]},
-    {"name": "Git", "category": "Architecture & Engineering Practices", "aliases": ["git version control", "github", "git flow"]},
+    {"name": "Distributed Systems", "category": "Architecture & Engineering Practices", "aliases": ["fault tolerance", "consensus", "raft", "sharding"]},
     {"name": "Unit Testing", "category": "Architecture & Engineering Practices", "aliases": ["pytest", "jest", "mocking", "test-driven development", "tdd"]},
     {"name": "UI/UX Design", "category": "Architecture & Engineering Practices", "aliases": ["figma", "wireframing", "accessibility", "a11y"]},
-    {"name": "Agile / Scrum", "category": "Architecture & Engineering Practices", "aliases": ["jira", "sprint planning", "scrum master"]}
+    {"name": "Agile / Scrum", "category": "Architecture & Engineering Practices", "aliases": ["jira", "sprint planning", "scrum master"]},
+    {"name": "Microservices", "category": "Architecture & Engineering Practices", "aliases": ["service-oriented architecture", "soa"]},
+    {"name": "API Design", "category": "Architecture & Engineering Practices", "aliases": ["restful design", "api contract", "api first"]},
+    {"name": "TDD", "category": "Architecture & Engineering Practices", "aliases": ["test driven development", "red-green-refactor"]}
   ]
 }
