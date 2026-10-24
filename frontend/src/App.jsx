@@ -146,11 +146,11 @@ Contact: +1-555-0199, 123 Tech Lane, San Francisco CA, john.personal@gmail.com, 
         githubUsername: 'octocat',
         resumeText: `Jordan Hayes
 Senior Distributed Systems Engineer with 6 years experience architecting scalable microservices and transactional platforms.
-Technical Skills: Python, FastAPI, Docker, Kubernetes, PostgreSQL, Redis, AWS, REST APIs, Git, Kafka.
+Technical Skills: Python, FastAPI, Docker, Kubernetes, PostgreSQL, Redis, AWS, REST APIs, Git, Kafka, CI/CD.
 Key Projects:
-- Architected high-throughput ledger microservice in Python/FastAPI processing 20k events/sec with Redis caching.
-- Optimized PostgreSQL database indexes and configured query connection pooling, cutting p99 latency by 65%.
-- Implemented zero-downtime Kubernetes rolling deployment pipelines on AWS EKS with Prometheus monitoring.
+- Architected high-throughput ledger microservice in Python/FastAPI processing 20k events/sec with Redis caching (2022 - 2024).
+- Optimized PostgreSQL database indexes and configured query connection pooling, cutting p99 latency by 65% (2021 - 2022).
+- Implemented zero-downtime Kubernetes rolling deployment pipelines on AWS EKS with Prometheus monitoring (2019 - 2021).
 Certifications: AWS Solutions Architect Associate, Certified Kubernetes Application Developer (CKAD).
 Contact: +1 (555) 432-8765, 452 Enterprise Way, Austin TX, jordan.hayes@gmail.com, DOB: 1993-11-04.`
       });
@@ -165,10 +165,10 @@ Contact: +1 (555) 432-8765, 452 Enterprise Way, Austin TX, jordan.hayes@gmail.co
 Lead Frontend Engineer with 7 years experience delivering design systems and performant modern web applications.
 Technical Skills: TypeScript, React, Tailwind CSS, Next.js, Jest, GraphQL, Webpack, Vite, Node.js, Accessibility (a11y).
 Key Projects:
-- Spearheaded company-wide React component design system with 50+ accessible UI components used by 12 squads.
-- Reduced initial bundle load size by 40% through code splitting, tree shaking, and modern asset optimizations.
-- Built end-to-end testing infrastructure using Jest and Playwright with 95% critical path coverage.
-Certifications: Meta Frontend Developer Professional Certificate.
+- Spearheaded company-wide React component design system with 50+ accessible UI components used by 12 squads (2022 - 2024).
+- Reduced initial bundle load size by 40% through code splitting, tree shaking, and modern asset optimizations (2020 - 2022).
+- Built end-to-end testing infrastructure using Jest and Playwright with 95% critical path coverage (2018 - 2020).
+Certifications: Meta Frontend Developer Professional Certificate, AWS Certified Cloud Practitioner.
 Contact: +1 (555) 987-1234, 88 Mission Boulevard, Seattle WA, elena.rostova@outlook.com, DOB: 1992-06-18.`
       });
       setGithubCheckInfo(null);
@@ -1624,7 +1624,7 @@ Contact: +1 (555) 987-1234, 88 Mission Boulevard, Seattle WA, elena.rostova@outl
                 <div className="relative">
                   <input
                     type="text"
-                    placeholder="e.g. octocat (leave empty for resume-only)"
+                    placeholder="GitHub username (optional, leave blank for resume-only)"
                     value={formData.githubUsername}
                     onBlur={() => checkGithubUsername(formData.githubUsername)}
                     onChange={(e) => {

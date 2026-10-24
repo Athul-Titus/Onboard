@@ -44,6 +44,12 @@ def test_parse_resume_corrupt_docx():
     assert res.status_code == 400
     assert "corrupt" in res.json()["detail"].lower() or "unreadable" in res.json()["detail"].lower()
 
+def test_parse_resume_corrupt_pdf():
+    files = {"file": ("broken.pdf", io.BytesIO(b"%PDF-invalid content that is corrupted"), "application/pdf")}
+    res = client.post("/parse-resume", files=files)
+    assert res.status_code == 400
+    assert "corrupt" in res.json()["detail"].lower() or "unreadable" in res.json()["detail"].lower()
+
 def test_parse_resume_unsupported_format():
     files = {"file": ("malware.exe", io.BytesIO(b"some binary code"), "application/octet-stream")}
     res = client.post("/parse-resume", files=files)
