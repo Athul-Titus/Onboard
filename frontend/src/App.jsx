@@ -499,6 +499,69 @@ Contact: +1-555-0199, 123 Tech Lane, San Francisco CA, john.personal@gmail.com, 
           </div>
         )}
 
+        {/* Post-Submission PII Redaction Summary Banner */}
+        {hireDetail?.redaction_summary && (
+          <div className="bg-slate-900/60 border border-indigo-500/30 rounded-2xl p-4 flex flex-wrap items-center justify-between gap-3 shadow-lg backdrop-blur">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400">
+                <ShieldCheck className="w-5 h-5" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="font-bold text-white text-sm">Automated PII Redaction Summary</span>
+                  <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-[11px] font-semibold">
+                    {hireDetail.redaction_summary.total} {hireDetail.redaction_summary.total === 1 ? 'item' : 'items'} sanitized
+                  </span>
+                </div>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  {hireDetail.redaction_summary.total > 0
+                    ? `Sanitized before AI processing: ${hireDetail.redaction_summary.types_removed.map((t) => t.toUpperCase()).join(', ')}`
+                    : 'No candidate PII detected in resume text (clean for processing)'}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <span
+                className={`px-2.5 py-1 rounded-lg text-xs font-mono border ${
+                  hireDetail.redaction_summary.phone > 0
+                    ? 'bg-indigo-500/15 border-indigo-500/40 text-indigo-300 font-semibold'
+                    : 'bg-slate-950/70 border-slate-800 text-slate-500'
+                }`}
+              >
+                Phone: {hireDetail.redaction_summary.phone}
+              </span>
+              <span
+                className={`px-2.5 py-1 rounded-lg text-xs font-mono border ${
+                  hireDetail.redaction_summary.address > 0
+                    ? 'bg-indigo-500/15 border-indigo-500/40 text-indigo-300 font-semibold'
+                    : 'bg-slate-950/70 border-slate-800 text-slate-500'
+                }`}
+              >
+                Address: {hireDetail.redaction_summary.address}
+              </span>
+              <span
+                className={`px-2.5 py-1 rounded-lg text-xs font-mono border ${
+                  hireDetail.redaction_summary.email > 0
+                    ? 'bg-indigo-500/15 border-indigo-500/40 text-indigo-300 font-semibold'
+                    : 'bg-slate-950/70 border-slate-800 text-slate-500'
+                }`}
+              >
+                Email: {hireDetail.redaction_summary.email}
+              </span>
+              <span
+                className={`px-2.5 py-1 rounded-lg text-xs font-mono border ${
+                  hireDetail.redaction_summary.dob > 0
+                    ? 'bg-indigo-500/15 border-indigo-500/40 text-indigo-300 font-semibold'
+                    : 'bg-slate-950/70 border-slate-800 text-slate-500'
+                }`}
+              >
+                DOB: {hireDetail.redaction_summary.dob}
+              </span>
+            </div>
+          </div>
+        )}
+
         {/* TAB 1: WORKFLOW VIEW */}
         {activeTab === 'workflow' && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -1431,6 +1494,17 @@ Contact: +1-555-0199, 123 Tech Lane, San Francisco CA, john.personal@gmail.com, 
                       <span>{intakeErrors.resumeText}</span>
                     </p>
                   )}
+                </div>
+
+                {/* Privacy Guardrail Note */}
+                <div className="p-2.5 rounded-lg bg-slate-950/80 border border-slate-800 text-[11px] text-slate-400 flex items-start gap-2">
+                  <Lock className="w-3.5 h-3.5 text-indigo-400 shrink-0 mt-0.5" />
+                  <div className="space-y-0.5">
+                    <span className="text-slate-300 font-semibold">Privacy & Redaction Policy:</span>
+                    <p className="text-slate-400 leading-relaxed text-[11px]">
+                      Candidate personal identifiers—phone numbers, physical addresses, personal emails, and dates of birth (DOB)—are automatically redacted locally before technical skill extraction and LLM ingestion.
+                    </p>
+                  </div>
                 </div>
               </div>
 

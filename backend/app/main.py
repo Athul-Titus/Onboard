@@ -34,10 +34,12 @@ from backend.app.schemas import (
     Guide,
     AuditEntry,
     StepStatusInfo,
-    TeamGapAnalysis
+    TeamGapAnalysis,
+    RedactionSummary
 )
 from backend.app.tools.directory import init_mock_directory
 from backend.app.orchestrator import orchestrator
+from backend.app.agents.skill_manager import skill_manager
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("onboardos")
@@ -421,6 +423,12 @@ def get_hire(id: str, db: Session = Depends(get_db)):
         for log in sorted(emp.audit_logs, key=lambda x: x.timestamp)
     ]
 
+    # Compute PII redaction metrics from candidate resume
+    _, pii_summary = skill_manager.redact_pii_with_summary(emp.resume_text or "")
+    redaction_summary = RedactionSummary(**pii_summary)
+    if skill_map:
+        skill_map.redaction_summary = redaction_summary
+
     return HireDetailResponse(
         employee=Employee(
             id=emp.id,
@@ -436,7 +444,8 @@ def get_hire(id: str, db: Session = Depends(get_db)):
         skill_map=skill_map,
         assignment=assignment,
         guide=guide,
-        audit_logs=audit_logs
+        audit_logs=audit_logs,
+        redaction_summary=redaction_summary
     )
 
 @app.get("/hires/{id}/audit", response_model=List[AuditEntry])
