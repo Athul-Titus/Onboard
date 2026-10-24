@@ -1,11 +1,13 @@
 # Git Branching and Release Flow
 
+> **Sample Data**: This document is synthetic sample documentation created for OnboardOS multi-agent orchestrator evaluation and demonstration.
+
 ## Branching Strategy
 We adhere to **Trunk-Based Development**:
 - `main` is our production-ready trunk.
 - Feature branches branch directly off `main` with naming convention:
   `feat/<ticket-id>-short-description` or `fix/<ticket-id>-short-description`.
-- Long-lived feature branches are strongly discouraged. Break large initiatives down into incremental PRs shielded by feature flags.
+- Long-lived feature branches are strongly discouraged. Break large initiatives down into incremental pull requests shielded by feature flags.
 
 ## Feature Flags
 We use LaunchDarkly for progressive rollouts:

@@ -1,5 +1,7 @@
 # Frontend Platform Setup
 
+> **Sample Data**: This document is synthetic sample documentation created for OnboardOS multi-agent orchestrator evaluation and demonstration.
+
 ## Prerequisites
 Frontend engineers require:
 1. Node.js version 20 LTS or later (installed via `nvm` or `fnm`)

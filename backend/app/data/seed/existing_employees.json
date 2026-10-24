@@ -1,0 +1,183 @@
+[
+  {
+    "_sample_data_note": "Synthetic existing corporate directory employees for OnboardOS collision demo.",
+    "id": "emp_001",
+    "name": "John Doe",
+    "email": "john.doe@company.com",
+    "username": "john.doe",
+    "team": "Backend Platform",
+    "role": "Senior Software Engineer",
+    "start_date": "2023-03-15",
+    "is_active": true
+  },
+  {
+    "id": "emp_002",
+    "name": "Jane Doe",
+    "email": "j.doe@company.com",
+    "username": "j.doe",
+    "team": "Backend Platform",
+    "role": "Staff Software Engineer",
+    "start_date": "2022-08-01",
+    "is_active": true
+  },
+  {
+    "id": "emp_003",
+    "name": "Alex Chen",
+    "email": "alex.chen@company.com",
+    "username": "alex.chen",
+    "team": "Data & ML Platform",
+    "role": "Principal ML Engineer",
+    "start_date": "2021-06-10",
+    "is_active": true
+  },
+  {
+    "id": "emp_004",
+    "name": "Alice Chen",
+    "email": "a.chen@company.com",
+    "username": "a.chen",
+    "team": "DevOps & Infrastructure",
+    "role": "Senior DevOps Engineer",
+    "start_date": "2023-01-20",
+    "is_active": true
+  },
+  {
+    "id": "emp_005",
+    "name": "Alexandria Cole",
+    "email": "alex.c@company.com",
+    "username": "alex.c",
+    "team": "Frontend Platform",
+    "role": "Software Engineer",
+    "start_date": "2024-02-15",
+    "is_active": true
+  },
+  {
+    "id": "emp_006",
+    "name": "Sarah Miller",
+    "email": "sarah.miller@company.com",
+    "username": "sarah.miller",
+    "team": "Frontend Platform",
+    "role": "Engineering Manager",
+    "start_date": "2020-11-01",
+    "is_active": true
+  },
+  {
+    "id": "emp_007",
+    "name": "Priya Sharma",
+    "email": "priya.sharma@company.com",
+    "username": "priya.sharma",
+    "team": "Backend Platform",
+    "role": "Staff Backend Architect",
+    "start_date": "2021-09-15",
+    "is_active": true
+  },
+  {
+    "id": "emp_008",
+    "name": "David Kim",
+    "email": "david.kim@company.com",
+    "username": "david.kim",
+    "team": "Data & ML Platform",
+    "role": "Staff Data Engineer",
+    "start_date": "2022-04-18",
+    "is_active": true
+  },
+  {
+    "id": "emp_009",
+    "name": "Emily Watson",
+    "email": "emily.watson@company.com",
+    "username": "emily.watson",
+    "team": "Frontend Platform",
+    "role": "Principal Product Designer",
+    "start_date": "2021-02-01",
+    "is_active": true
+  },
+  {
+    "id": "emp_010",
+    "name": "Marcus Vance",
+    "email": "marcus.vance@company.com",
+    "username": "marcus.vance",
+    "team": "Backend Platform",
+    "role": "VP of Engineering",
+    "start_date": "2019-05-01",
+    "is_active": true
+  },
+  {
+    "id": "emp_011",
+    "name": "Jordan Hayes",
+    "email": "jordan.hayes@company.com",
+    "username": "jordan.hayes",
+    "team": "DevOps & Infrastructure",
+    "role": "Director of Infrastructure",
+    "start_date": "2020-07-15",
+    "is_active": true
+  },
+  {
+    "id": "emp_012",
+    "name": "Elena Rostova",
+    "email": "elena.rostova@company.com",
+    "username": "elena.rostova",
+    "team": "DevOps & Infrastructure",
+    "role": "Staff Site Reliability Engineer",
+    "start_date": "2022-10-01",
+    "is_active": true
+  },
+  {
+    "id": "emp_013",
+    "name": "Rachel Gomez",
+    "email": "rachel.gomez@company.com",
+    "username": "rachel.gomez",
+    "team": "Mobile Platform",
+    "role": "Engineering Manager",
+    "start_date": "2022-01-10",
+    "is_active": true
+  },
+  {
+    "id": "emp_014",
+    "name": "Carlos Santana",
+    "email": "carlos.santana@company.com",
+    "username": "carlos.santana",
+    "team": "Mobile Platform",
+    "role": "Senior Mobile Engineer",
+    "start_date": "2023-05-20",
+    "is_active": true
+  },
+  {
+    "id": "emp_015",
+    "name": "Maya Lin",
+    "email": "maya.lin@company.com",
+    "username": "maya.lin",
+    "team": "Frontend Platform",
+    "role": "Senior Frontend Engineer",
+    "start_date": "2023-09-01",
+    "is_active": true
+  },
+  {
+    "id": "emp_016",
+    "name": "Kevin Patel",
+    "email": "kevin.patel@company.com",
+    "username": "kevin.patel",
+    "team": "Data & ML Platform",
+    "role": "ML Systems Engineer",
+    "start_date": "2024-01-15",
+    "is_active": true
+  },
+  {
+    "id": "emp_017",
+    "name": "Liam O'Connor",
+    "email": "liam.oconnor@company.com",
+    "username": "liam.oconnor",
+    "team": "Backend Platform",
+    "role": "Backend Engineer",
+    "start_date": "2024-03-01",
+    "is_active": true
+  },
+  {
+    "id": "emp_018",
+    "name": "Zoe Washington",
+    "email": "zoe.washington@company.com",
+    "username": "zoe.washington",
+    "team": "DevOps & Infrastructure",
+    "role": "Cloud Security Engineer",
+    "start_date": "2023-11-15",
+    "is_active": true
+  }
+]

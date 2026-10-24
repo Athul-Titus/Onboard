@@ -1,5 +1,7 @@
 # Team Frontend Platform Overview
 
+> **Sample Data**: This document is synthetic sample documentation created for OnboardOS multi-agent orchestrator evaluation and demonstration.
+
 ## Mission Statement
 The Frontend Platform team creates world-class, accessible, and delighting web experiences across our product portfolio while maintaining the shared Design System.
 
@@ -7,8 +9,8 @@ The Frontend Platform team creates world-class, accessible, and delighting web e
 - **Slack Channel**: `#team-frontend-platform`
 - **Daily Standup**: Monday through Friday at 10:30 AM PST.
 - **Design Review**: Weekly sync with UX designers every Thursday at 2:00 PM PST.
-- **Key Lead**: Sarah Miller (Engineering Manager, sarah.miller@company.com).
-- **Design Lead**: Emily Watson (Principal Product Designer, emily.watson@company.com).
+- **Key Lead**: Sarah Miller (Engineering Manager, `sarah.miller@company.com`).
+- **Design Lead**: Emily Watson (Principal Product Designer, `emily.watson@company.com`).
 
 ## First 30 Days Milestones
 - **Day 1**: Run the frontend repository and Storybook locally, explore components.

@@ -1,5 +1,7 @@
 # Mobile Platform Setup
 
+> **Sample Data**: This document is synthetic sample documentation created for OnboardOS multi-agent orchestrator evaluation and demonstration.
+
 ## iOS and Android Development
 Mobile developers configure:
 1. macOS Sonoma or later with Xcode 15+ and Command Line Tools
@@ -7,18 +9,18 @@ Mobile developers configure:
 3. Node.js 20 and Watchman (`brew install watchman`)
 4. CocoaPods (`sudo gem install cocoapods`)
 
-## Running the Mobile App
+## Running the Mobile App Locally
 From the root of `mobile-client`:
 ```bash
 git clone https://github.com/company/mobile-client.git
 cd mobile-client
 npm install
 cd ios && pod install && cd ..
-npm run ios     # Launches iOS Simulator (iPhone 15)
-npm run android # Launches Android Emulator
+npm run ios     # Launches local iOS Simulator (iPhone 15)
+npm run android # Launches local Android Emulator
 ```
 
-## Testing & Offline Sync Architecture
+## Testing and Offline Sync Architecture
 Run mobile unit tests with Jest:
 ```bash
 npm run test:unit

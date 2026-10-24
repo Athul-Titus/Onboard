@@ -1,5 +1,7 @@
 # DevOps and Cloud Infrastructure Setup
 
+> **Sample Data**: This document is synthetic sample documentation created for OnboardOS multi-agent orchestrator evaluation and demonstration.
+
 ## Required Tooling
 Platform engineers and DevOps team members require:
 1. AWS CLI v2 configured with AWS SSO (`aws configure sso`)

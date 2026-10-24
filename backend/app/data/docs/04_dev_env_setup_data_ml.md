@@ -1,5 +1,7 @@
 # Data and ML Platform Setup
 
+> **Sample Data**: This document is synthetic sample documentation created for OnboardOS multi-agent orchestrator evaluation and demonstration.
+
 ## Environment Requirements
 The Data and Machine Learning pipeline utilizes:
 1. Python 3.11 with Conda or Python venv
@@ -26,7 +28,7 @@ Verify the embedding test script passes:
 ```bash
 python -m pytest tests/test_retrieval.py
 ```
-This tests both dense all-MiniLM-L6-v2 vector lookups and sparse BM25 keyword matching.
+This tests both dense `all-MiniLM-L6-v2` vector lookups and sparse BM25 keyword matching.
 
-## Feature Store & Data Governance
+## Feature Store and Data Governance
 Never train models on unmasked PII. All training datasets must pull features via the feature store registry where automated hashing of personal identifiers is enforced.

@@ -1,35 +1,36 @@
 {
+  "_sample_data_note": "Synthetic sample naming policy configuration for OnboardOS prototype demonstration.",
   "domain": "company.com",
   "rules": [
     {
       "id": "rule_1",
       "name": "first.last",
       "template": "{first}.{last}",
-      "description": "Standard corporate format: first name dot last name"
+      "description": "Standard corporate format: first name dot last name (e.g. john.doe@company.com)"
     },
     {
       "id": "rule_2",
-      "name": "first.last_initial",
+      "name": "first.l",
       "template": "{first}.{last_initial}",
-      "description": "Secondary format: first name dot last initial"
+      "description": "Primary fallback format: first name dot last initial (e.g. john.d@company.com)"
     },
     {
       "id": "rule_3",
       "name": "first_initial.last",
       "template": "{first_initial}.{last}",
-      "description": "Tertiary format: first initial dot last name"
+      "description": "Secondary fallback format: first initial dot last name (e.g. j.doe@company.com)"
     },
     {
       "id": "rule_4",
       "name": "first.last2",
       "template": "{first}.{last}2",
-      "description": "Numeric suffix 2 for collision resolution"
+      "description": "Numbered suffix fallback: first name dot last name 2 (e.g. john.doe2@company.com)"
     },
     {
       "id": "rule_5",
       "name": "first.last3",
       "template": "{first}.{last}3",
-      "description": "Numeric suffix 3 for multiple collision resolution"
+      "description": "Numbered suffix fallback: first name dot last name 3 (e.g. john.doe3@company.com)"
     }
   ]
 }
