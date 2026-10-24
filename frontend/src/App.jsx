@@ -97,6 +97,42 @@ Contact: +1-555-0199, 123 Tech Lane, San Francisco CA, john.personal@gmail.com, 
     }
   };
 
+  // Form Validation & GitHub verification state
+  const [intakeErrors, setIntakeErrors] = useState({});
+  const [isValidatingGithub, setIsValidatingGithub] = useState(false);
+  const [githubCheckInfo, setGithubCheckInfo] = useState(null);
+
+  const checkGithubUsername = async (username) => {
+    const trimmed = (username || '').trim();
+    if (!trimmed) {
+      setGithubCheckInfo(null);
+      setIntakeErrors((prev) => ({ ...prev, githubUsername: null }));
+      return true;
+    }
+    setIsValidatingGithub(true);
+    try {
+      const res = await fetch(`${API_BASE}/validate-github/${encodeURIComponent(trimmed)}`);
+      const data = await res.json();
+      if (!data.exists) {
+        setGithubCheckInfo({ status: 'not_found', message: data.error || `GitHub user '${trimmed}' not found` });
+        setIntakeErrors((prev) => ({ ...prev, githubUsername: data.error || `GitHub user '${trimmed}' not found` }));
+        return false;
+      } else {
+        setGithubCheckInfo({
+          status: 'valid',
+          message: data.public_repos !== undefined ? `Verified (${data.public_repos} public repos)` : 'Profile accessible'
+        });
+        setIntakeErrors((prev) => ({ ...prev, githubUsername: null }));
+        return true;
+      }
+    } catch (err) {
+      setGithubCheckInfo(null);
+      return true;
+    } finally {
+      setIsValidatingGithub(false);
+    }
+  };
+
   // Override form state
   const [overrideData, setOverrideData] = useState({
     team: 'Frontend Platform',
@@ -151,25 +187,73 @@ Contact: +1-555-0199, 123 Tech Lane, San Francisco CA, john.personal@gmail.com, 
   // Handle Intake Submit
   const handleIntakeSubmit = async (e) => {
     e.preventDefault();
+    const errors = {};
+
+    if (!formData.name?.trim()) {
+      errors.name = 'Full Name is required.';
+    }
+    if (!formData.role?.trim()) {
+      errors.role = 'Role is required.';
+    }
+    if (!formData.startDate?.trim()) {
+      errors.startDate = 'Start Date is required.';
+    }
+
+    const trimmedResume = (formData.resumeText || '').trim();
+    if (!trimmedResume || trimmedResume.length < 50) {
+      errors.resumeText = `Resume must contain at least 50 characters (currently ${trimmedResume.length} characters).`;
+    }
+
+    // Check GitHub username existence if provided
+    const trimmedGithub = (formData.githubUsername || '').trim();
+    if (trimmedGithub) {
+      setIsValidatingGithub(true);
+      try {
+        const checkRes = await fetch(`${API_BASE}/validate-github/${encodeURIComponent(trimmedGithub)}`);
+        const checkData = await checkRes.json();
+        if (!checkData.exists) {
+          errors.githubUsername = checkData.error || `GitHub user '${trimmedGithub}' not found. Please verify spelling.`;
+          setGithubCheckInfo({ status: 'not_found', message: errors.githubUsername });
+        } else {
+          setGithubCheckInfo({
+            status: 'valid',
+            message: checkData.public_repos !== undefined ? `Verified (${checkData.public_repos} public repos)` : 'Profile accessible'
+          });
+        }
+      } catch (err) {
+        console.warn('GitHub check error:', err);
+      } finally {
+        setIsValidatingGithub(false);
+      }
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setIntakeErrors(errors);
+      return;
+    }
+
+    setIntakeErrors({});
     setLoading(true);
     try {
       const res = await fetch(`${API_BASE}/hires`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          name: formData.name,
-          role: formData.role,
-          start_date: formData.startDate,
-          github_username: formData.githubUsername,
-          resume_text: formData.resumeText
+          name: formData.name.trim(),
+          role: formData.role.trim(),
+          start_date: formData.startDate.trim(),
+          github_username: trimmedGithub || null,
+          resume_text: trimmedResume
         })
       });
-      if (res.ok) {
-        const newHire = await res.json();
-        setShowIntakeModal(false);
-        await fetchHires();
-        setSelectedHireId(newHire.employee.id);
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.detail || 'Failed to initialize onboarding intake.');
       }
+      const newHire = await res.json();
+      setShowIntakeModal(false);
+      await fetchHires();
+      setSelectedHireId(newHire.employee.id);
     } catch (err) {
       alert('Error creating hire intake: ' + err.message);
     } finally {

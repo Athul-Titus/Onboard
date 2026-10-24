@@ -8,6 +8,7 @@ import docx
 from fastapi import FastAPI, Depends, HTTPException, BackgroundTasks, WebSocket, WebSocketDisconnect, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import PlainTextResponse
+import httpx
 import pypdf
 from sqlalchemy.orm import Session
 
@@ -192,17 +193,78 @@ async def parse_resume(file: UploadFile = File(...)):
         "word_count": len(extracted_text.split())
     }
 
+@app.get("/validate-github/{username}")
+async def validate_github_username(username: str):
+    """Validates whether a GitHub username exists on GitHub with detailed error messaging."""
+    cleaned = username.strip()
+    if not cleaned:
+        return {"exists": False, "error": "Username cannot be empty."}
+
+    headers = {"User-Agent": "OnboardOS-Validator"}
+    if settings.GITHUB_TOKEN:
+        headers["Authorization"] = f"token {settings.GITHUB_TOKEN}"
+
+    try:
+        async with httpx.AsyncClient(timeout=6.0) as client:
+            resp = await client.get(f"https://api.github.com/users/{cleaned}", headers=headers)
+            if resp.status_code == 200:
+                data = resp.json()
+                return {
+                    "exists": True,
+                    "username": cleaned,
+                    "name": data.get("name"),
+                    "public_repos": data.get("public_repos", 0)
+                }
+            elif resp.status_code == 404:
+                return {
+                    "exists": False,
+                    "error": f"GitHub user '{cleaned}' not found. Please verify spelling."
+                }
+            elif resp.status_code in [403, 429]:
+                # Rate limit encountered - do not block the user
+                return {
+                    "exists": True,
+                    "warning": "GitHub API rate limit reached; proceeding without blocking."
+                }
+            else:
+                return {
+                    "exists": True,
+                    "warning": f"GitHub check returned status {resp.status_code}; proceeding."
+                }
+    except Exception as e:
+        logger.warning(f"Error checking GitHub username '{cleaned}': {e}")
+        return {
+            "exists": True,
+            "warning": "Network timeout checking GitHub; proceeding."
+        }
+
 @app.post("/hires", response_model=HireDetailResponse)
 def create_hire(req: HireCreateRequest, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
     """Creates a new hire intake record and triggers the multi-agent workflow in the background."""
+    # Validate required fields
+    if not req.name or not req.name.strip():
+        raise HTTPException(status_code=400, detail="Full Name is required.")
+    if not req.role or not req.role.strip():
+        raise HTTPException(status_code=400, detail="Role is required.")
+    if not req.start_date or not req.start_date.strip():
+        raise HTTPException(status_code=400, detail="Start Date is required.")
+    
+    # Minimum resume length validation (>= 50 chars)
+    resume = (req.resume_text or "").strip()
+    if len(resume) < 50:
+        raise HTTPException(
+            status_code=400,
+            detail="Resume content must contain at least 50 characters to extract engineering skills."
+        )
+
     emp_id = str(uuid.uuid4())
     emp = EmployeeModel(
         id=emp_id,
-        name=req.name,
-        role=req.role,
-        start_date=req.start_date,
-        github_username=req.github_username,
-        resume_text=req.resume_text,
+        name=req.name.strip(),
+        role=req.role.strip(),
+        start_date=req.start_date.strip(),
+        github_username=req.github_username.strip() if req.github_username else None,
+        resume_text=resume,
         status="running",
         current_step="identity",
         step_status_json=json.dumps({
