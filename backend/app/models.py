@@ -84,6 +84,8 @@ class GuideModel(Base):
     employee_id = Column(String, ForeignKey("employees.id"), unique=True, nullable=False)
     sections_json = Column(Text, default="[]")
     verified = Column(Boolean, default=False)
+    verified_count = Column(Integer, default=0)
+    total_count = Column(Integer, default=0)
     created_at = Column(DateTime, default=utc_now)
 
     employee = relationship("EmployeeModel", back_populates="guide")

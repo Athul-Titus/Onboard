@@ -439,10 +439,13 @@ def get_hire(id: str, db: Session = Depends(get_db)):
             guide = Guide(
                 employee_id=emp.id,
                 sections=sections,
-                verified=emp.guide.verified
+                verified=emp.guide.verified,
+                verified_count=getattr(emp.guide, "verified_count", 0) or 0,
+                total_count=getattr(emp.guide, "total_count", 0) or 0,
             )
         except Exception as e:
             logger.error(f"Error parsing guide: {e}")
+
 
     # Audit Logs
     audit_logs = [

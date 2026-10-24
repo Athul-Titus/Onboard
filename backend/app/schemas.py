@@ -96,13 +96,14 @@ class Assignment(BaseModel):
     candidates: List[TeamCandidate] = Field(default_factory=list)
     status: WorkflowStepStatus = "waiting_approval"
 
-# 5. Guide & Citations
 class Citation(BaseModel):
     doc: str
     section: str
+    source_text: Optional[str] = None
 
 class GuideItem(BaseModel):
     text: str
+    detail: Optional[str] = None
     citation: Optional[Citation] = None
     status: GuideItemStatus = "grounded"
 
@@ -114,6 +115,8 @@ class Guide(BaseModel):
     employee_id: str
     sections: List[GuideSection] = Field(default_factory=list)
     verified: bool = False
+    verified_count: int = 0
+    total_count: int = 0
 
 # 6. Audit Entry
 class AuditEntry(BaseModel):

@@ -387,21 +387,29 @@ class WorkflowOrchestrator:
                 employee_id=employee_id,
                 team_name=team_name,
                 project_name=project_name,
-                skill_gaps=skill_gaps
+                skill_gaps=skill_gaps,
+                role=emp.role or "",
+                hire_name=emp.name or "",
             )
 
             existing = db.query(GuideModel).filter(GuideModel.employee_id == employee_id).first()
             sections_json = json.dumps([s.model_dump() for s in guide.sections])
+            vc = getattr(guide, "verified_count", 0)
+            tc = getattr(guide, "total_count", 0)
 
             if existing:
                 existing.sections_json = sections_json
                 existing.verified = guide.verified
+                existing.verified_count = vc
+                existing.total_count = tc
             else:
                 new_guide = GuideModel(
                     id=str(uuid.uuid4()),
                     employee_id=employee_id,
                     sections_json=sections_json,
-                    verified=guide.verified
+                    verified=guide.verified,
+                    verified_count=vc,
+                    total_count=tc
                 )
                 db.add(new_guide)
 

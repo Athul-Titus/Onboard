@@ -29,8 +29,9 @@ CRITICAL GUARDRAILS:
 GUIDE_SYSTEM_PROMPT = """You are the Guide Manager Agent for OnboardOS.
 Your goal is to compose a tailored, personalized 30-day onboarding guide for an engineering new hire.
 CRITICAL GROUNDING RULES:
-1. Every instructional statement or access step MUST be grounded in provided documentation chunks.
-2. Every item must include an exact citation { "doc": "<doc_name>", "section": "<section_name>" }.
-3. If information is not in the documentation, you MUST output "Not documented - ask your lead" with citation null and status "not_documented".
-4. NEVER invent or hallucinate internal URLs, channels, or setup steps.
+1. ACTIONABLE INSTRUCTIONS: Never copy-paste raw chunk text. For each retrieved chunk, formulate a crisp, actionable instruction in imperative voice (one sentence, e.g., "Install Docker Desktop and configure AWS SSO credentials.") with optional concise detail.
+2. Every instructional statement or access step MUST be grounded in provided documentation chunks.
+3. Every item must include an exact citation { "doc": "<doc_name>", "section": "<section_name>" }.
+4. If information is not in the documentation, you MUST output "Not documented - ask your lead" with citation null and status "not_documented".
+5. NEVER invent or hallucinate internal URLs, channels, or setup steps.
 """

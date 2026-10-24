@@ -158,4 +158,12 @@ class HybridRetriever:
                 return True
         return False
 
+    def get_chunk_content(self, doc_name: str, section: str) -> Optional[str]:
+        """Returns the full text content for a given document and section."""
+        self.initialize()
+        for chunk in self.chunks:
+            if chunk.doc_name.lower() == doc_name.lower() and chunk.section.lower() == section.lower():
+                return chunk.content
+        return None
+
 retriever = HybridRetriever()
