@@ -1,0 +1,79 @@
+[
+  {
+    "name": "Backend Platform",
+    "description": "Core high-throughput microservices, distributed caching, databases, and enterprise APIs.",
+    "required_skills": [
+      "Python",
+      "FastAPI",
+      "PostgreSQL",
+      "Redis",
+      "Docker",
+      "System Design",
+      "SQLAlchemy",
+      "REST APIs"
+    ],
+    "capacity": 8,
+    "current_load": 5
+  },
+  {
+    "name": "Frontend Platform",
+    "description": "Customer-facing web applications, shared component design system, and frontend performance.",
+    "required_skills": [
+      "TypeScript",
+      "React",
+      "TailwindCSS",
+      "Next.js",
+      "State Management",
+      "WebSockets",
+      "UI/UX Design"
+    ],
+    "capacity": 6,
+    "current_load": 4
+  },
+  {
+    "name": "Data & ML Platform",
+    "description": "Real-time streaming pipelines, feature stores, LLM orchestration, and machine learning infrastructure.",
+    "required_skills": [
+      "Python",
+      "PyTorch",
+      "Spark",
+      "Kafka",
+      "ChromaDB",
+      "SQL",
+      "Machine Learning",
+      "Vector Embeddings"
+    ],
+    "capacity": 5,
+    "current_load": 2
+  },
+  {
+    "name": "DevOps & Infrastructure",
+    "description": "Kubernetes clusters, CI/CD automation, cloud architecture (AWS), and platform observability.",
+    "required_skills": [
+      "Kubernetes",
+      "Terraform",
+      "AWS",
+      "Docker",
+      "CI/CD",
+      "Prometheus",
+      "Linux",
+      "Security"
+    ],
+    "capacity": 5,
+    "current_load": 3
+  },
+  {
+    "name": "Mobile Platform",
+    "description": "Cross-platform and native mobile applications with offline-first synchronization and push notifications.",
+    "required_skills": [
+      "React Native",
+      "TypeScript",
+      "iOS / Swift",
+      "Android / Kotlin",
+      "REST APIs",
+      "Mobile Architecture"
+    ],
+    "capacity": 4,
+    "current_load": 3
+  }
+]

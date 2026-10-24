@@ -1,0 +1,35 @@
+{
+  "domain": "company.com",
+  "rules": [
+    {
+      "id": "rule_1",
+      "name": "first.last",
+      "template": "{first}.{last}",
+      "description": "Standard corporate format: first name dot last name"
+    },
+    {
+      "id": "rule_2",
+      "name": "first.last_initial",
+      "template": "{first}.{last_initial}",
+      "description": "Secondary format: first name dot last initial"
+    },
+    {
+      "id": "rule_3",
+      "name": "first_initial.last",
+      "template": "{first_initial}.{last}",
+      "description": "Tertiary format: first initial dot last name"
+    },
+    {
+      "id": "rule_4",
+      "name": "first.last2",
+      "template": "{first}.{last}2",
+      "description": "Numeric suffix 2 for collision resolution"
+    },
+    {
+      "id": "rule_5",
+      "name": "first.last3",
+      "template": "{first}.{last}3",
+      "description": "Numeric suffix 3 for multiple collision resolution"
+    }
+  ]
+}

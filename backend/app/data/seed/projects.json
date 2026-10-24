@@ -1,0 +1,58 @@
+[
+  {
+    "name": "Distributed Cache Modernization",
+    "team": "Backend Platform",
+    "difficulty": "advanced",
+    "required_skills": ["Python", "FastAPI", "Redis", "Distributed Systems", "Docker"],
+    "description": "Migrate core in-memory caching layer to a distributed Redis cluster with auto-sharding and telemetry."
+  },
+  {
+    "name": "API Gateway Rate Limiter & Auth",
+    "team": "Backend Platform",
+    "difficulty": "medium",
+    "required_skills": ["Python", "PostgreSQL", "REST APIs", "Security", "FastAPI"],
+    "description": "Implement token-bucket rate limiting and JWT validation middleware across customer-facing API routes."
+  },
+  {
+    "name": "Design System 2.0 Components",
+    "team": "Frontend Platform",
+    "difficulty": "medium",
+    "required_skills": ["TypeScript", "React", "TailwindCSS", "UI/UX Design"],
+    "description": "Build accessible, responsive component library with dark-mode support and automated visual regression tests."
+  },
+  {
+    "name": "Real-Time Collaborative Dashboard",
+    "team": "Frontend Platform",
+    "difficulty": "advanced",
+    "required_skills": ["React", "TypeScript", "WebSockets", "State Management"],
+    "description": "Develop low-latency telemetry widgets and multi-user live cursors over WebSocket streaming."
+  },
+  {
+    "name": "Real-Time Feature Store Pipeline",
+    "team": "Data & ML Platform",
+    "difficulty": "advanced",
+    "required_skills": ["Python", "Kafka", "Spark", "SQL", "Machine Learning"],
+    "description": "Construct high-throughput streaming pipeline for low-latency ML feature retrieval during inference."
+  },
+  {
+    "name": "Semantic Vector Search Engine",
+    "team": "Data & ML Platform",
+    "difficulty": "medium",
+    "required_skills": ["Python", "ChromaDB", "Vector Embeddings", "PyTorch"],
+    "description": "Build hybrid retrieval pipeline combining dense vector embeddings with BM25 sparse keyword ranking."
+  },
+  {
+    "name": "Kubernetes Zero-Downtime Deployment Automation",
+    "team": "DevOps & Infrastructure",
+    "difficulty": "advanced",
+    "required_skills": ["Kubernetes", "Terraform", "AWS", "CI/CD", "Linux"],
+    "description": "Roll out GitOps-driven blue/green and canary deployments with automated rollback on Prometheus alerts."
+  },
+  {
+    "name": "Cross-Platform Mobile Offline Sync",
+    "team": "Mobile Platform",
+    "difficulty": "medium",
+    "required_skills": ["React Native", "TypeScript", "REST APIs", "Mobile Architecture"],
+    "description": "Implement offline SQLite caching and delta conflict resolution for field mobile client apps."
+  }
+]
