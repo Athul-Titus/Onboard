@@ -1,6 +1,6 @@
 import json
 import re
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Tuple
 from pydantic import BaseModel, Field
 
 from backend.app.config import settings
@@ -97,6 +97,59 @@ class SkillManager:
                 unique_quotes.append(q)
         return unique_quotes
 
+    def compute_level_and_confidence(
+        self,
+        skill: str,
+        years_experience: int,
+        project_mentions: int,
+        repo_count: int,
+        certified: bool,
+        has_tests: bool
+    ) -> Tuple[str, float, Dict[str, Any]]:
+        """
+        Computes level (beginner/intermediate/advanced) and 0-1 confidence from deterministic signals.
+        Returns (level, confidence, signals_used).
+        """
+        signals: Dict[str, Any] = {
+            "years_experience": years_experience,
+            "project_mentions": project_mentions,
+            "repo_count": repo_count,
+            "certified": certified,
+            "has_automated_tests": has_tests,
+            "derivation": []
+        }
+
+        # Level determination
+        if (repo_count >= 5) or (years_experience >= 4 and (project_mentions >= 1 or repo_count >= 2)) or (certified and (project_mentions >= 1 or repo_count >= 1)):
+            level = "advanced"
+            signals["derivation"].append("Advanced: robust multi-year experience combined with verifiable projects/repos")
+        elif (years_experience >= 2) or (repo_count >= 1) or (project_mentions >= 1) or certified:
+            level = "intermediate"
+            signals["derivation"].append("Intermediate: demonstrated practical usage across projects or repositories")
+        else:
+            level = "beginner"
+            signals["derivation"].append("Beginner: self-reported or early-stage competency")
+
+        # Confidence determination (0.0 to 1.0)
+        conf = 0.50
+        if project_mentions >= 1:
+            conf += 0.15 if project_mentions >= 2 else 0.10
+        if certified:
+            conf += 0.20
+        if repo_count >= 1:
+            conf += 0.25 if repo_count >= 4 else 0.15
+        if has_tests and repo_count >= 1:
+            conf += 0.05
+        if years_experience >= 4:
+            conf += 0.10
+        elif years_experience >= 2:
+            conf += 0.05
+
+        confidence = round(min(0.99, max(0.20, conf)), 2)
+        signals["confidence_score"] = confidence
+
+        return level, confidence, signals
+
     def extract_skills(
         self,
         employee_id: str,
@@ -149,18 +202,36 @@ class SkillManager:
 
             canon_lower = canonical.lower()
             evidence_list: List[str] = []
-            status: SkillStatus = "claimed"
-            confidence: float = 0.75
 
             # Find specific resume quote evidence
             resume_evidence = self.find_resume_evidence(safe_resume, canonical)
 
-            # 1. GitHub verification
-            if canonical in gh_skill_counts and gh_skill_counts[canonical] > 0:
-                count = gh_skill_counts[canonical]
+            # Compute deterministic signals
+            project_mentions = sum(
+                1 for q in resume_evidence if q.startswith("[Projects]") or q.startswith("[Experience]")
+            )
+            repo_count = gh_skill_counts.get(canonical, 0)
+            is_certified = canon_lower in certs_str or any(canon_lower in c.lower() for c in extracted.certifications)
+
+            # Compute level & confidence from deterministic signals
+            level, det_confidence, signals = self.compute_level_and_confidence(
+                skill=canonical,
+                years_experience=extracted.years_experience or 3,
+                project_mentions=project_mentions,
+                repo_count=repo_count,
+                certified=is_certified,
+                has_tests=bool(gh_evidence.get("has_tests", False))
+            )
+
+            # If verified by GitHub or Certificate, keep status as verified
+            if repo_count > 0 or is_certified:
                 status = "verified"
-                confidence = round(min(0.98, 0.85 + (count / max(1, total_repos)) * 0.15), 2)
-                evidence_list.append(f"GitHub: {canonical} in {count} of {total_repos} repos")
+            else:
+                status = "claimed"
+
+            # 1. GitHub verification evidence
+            if repo_count > 0:
+                evidence_list.append(f"GitHub: {canonical} in {repo_count} of {total_repos} repos")
                 if gh_evidence.get("has_tests"):
                     evidence_list.append("GitHub: Automated test suites detected in repositories")
             elif gh_state == "resume-only":
@@ -168,21 +239,24 @@ class SkillManager:
             else:
                 evidence_list.append(f"GitHub: Not found in public repos of @{gh_evidence.get('username')}")
 
-            # 2. Certification verification
-            if canon_lower in certs_str or any(canon_lower in c.lower() for c in extracted.certifications):
-                status = "verified"
-                confidence = max(confidence, 0.95)
+            # 2. Certification verification evidence
+            if is_certified:
                 evidence_list.append(f"Certified: Listed under verified credentials ({certs_str[:40]})")
 
-            # 3. Add the exact resume line quotes
+            # 3. Add exact resume line quotes
             evidence_list.extend(resume_evidence)
+
+            # Skill category from ontology
+            category = ontology.get_category(canonical)
 
             skill_items.append(SkillItem(
                 skill=canonical,
-                level="senior" if (extracted.years_experience or 0) >= 5 else "intermediate",
+                category=category,
+                level=level,
                 status=status,
-                confidence=confidence,
-                evidence=evidence_list
+                confidence=det_confidence,
+                evidence=evidence_list,
+                signals_used=signals
             ))
 
         # 4. Compute Gaps by Team

@@ -19,12 +19,16 @@ class Employee(BaseModel):
     github_username: Optional[str] = None
 
 # 2. SkillItem & SkillMap
+SkillLevel = Literal["beginner", "intermediate", "advanced"]
+
 class SkillItem(BaseModel):
     skill: str
-    level: str = "intermediate"  # junior, intermediate, senior, lead
+    category: str = "General Engineering"
+    level: SkillLevel = "intermediate"
     status: SkillStatus = "claimed"
     confidence: float = Field(default=0.8, ge=0.0, le=1.0)
     evidence: List[str] = Field(default_factory=list)
+    signals_used: Dict[str, Any] = Field(default_factory=dict)
 
 class SkillMap(BaseModel):
     employee_id: str
