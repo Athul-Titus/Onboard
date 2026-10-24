@@ -1,3 +1,4 @@
+import hashlib
 import json
 import logging
 import uuid
@@ -57,18 +58,39 @@ class WorkflowOrchestrator:
         action: str,
         input_summary: str,
         output_summary: str,
-        reason: str
+        reason: str,
+        entry_type: str = "agent_step",
+        actor: str = "System",
+        duration_ms: float = 0.0
     ) -> AuditLogModel:
-        """Appends an immutable audit log row to the database."""
+        """Appends an immutable audit log row to the database with cryptographic hash chaining."""
+        last_log = (
+            db.query(AuditLogModel)
+            .filter(AuditLogModel.employee_id == employee_id)
+            .order_by(AuditLogModel.timestamp.desc(), AuditLogModel.id.desc())
+            .first()
+        )
+        prev_hash = last_log.entry_hash if (last_log and last_log.entry_hash) else "0" * 64
+        now_ts = utc_iso()
+        entry_id = str(uuid.uuid4())
+
+        payload = f"{prev_hash}|{employee_id}|{now_ts}|{agent}|{action}|{entry_type}|{actor}|{duration_ms:.2f}|{input_summary}|{output_summary}|{reason}"
+        entry_hash = hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
         entry = AuditLogModel(
-            id=str(uuid.uuid4()),
+            id=entry_id,
             employee_id=employee_id,
-            timestamp=utc_iso(),
+            timestamp=now_ts,
             agent=agent,
             action=action,
+            entry_type=entry_type,
+            actor=actor,
+            duration_ms=duration_ms,
             input_summary=input_summary,
             output_summary=output_summary,
-            reason=reason
+            reason=reason,
+            previous_hash=prev_hash,
+            entry_hash=entry_hash
         )
         db.add(entry)
         db.commit()

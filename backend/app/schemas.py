@@ -120,12 +120,18 @@ class Guide(BaseModel):
 
 # 6. Audit Entry
 class AuditEntry(BaseModel):
+    id: Optional[str] = None
     timestamp: str
     agent: str
     action: str
+    entry_type: str = "agent_step"
+    actor: Optional[str] = "System"
+    duration_ms: Optional[float] = 0.0
     input_summary: str
     output_summary: str
     reason: str
+    previous_hash: Optional[str] = None
+    entry_hash: Optional[str] = None
 
 # 7. Identity Proposal
 class IdentityProposal(BaseModel):
