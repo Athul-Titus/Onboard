@@ -46,15 +46,15 @@ class GitHubTool:
         demo_profiles = {
             "johndoe": {
                 "repos_count": 12,
-                "skill_repo_counts": {"Python": 8, "FastAPI": 6, "Docker": 9, "PostgreSQL": 5, "Redis": 4, "Git": 12},
+                "skill_repo_counts": {"Python": 8, "FastAPI": 6, "Docker": 9, "PostgreSQL": 5, "Redis": 4, "Git": 12, "Kubernetes": 5, "REST APIs": 6},
                 "has_tests": True,
                 "top_repos": ["distributed-cache-service", "fastapi-gateway", "redis-sync-pipeline", "k8s-manifests"]
             },
             "octocat": {
                 "repos_count": 8,
-                "skill_repo_counts": {"Git": 8, "HTML5": 3, "CSS3": 2, "Ruby": 2},
+                "skill_repo_counts": {"Git": 8, "Python": 6, "Docker": 5, "FastAPI": 4, "PostgreSQL": 4, "Redis": 3, "Kubernetes": 3, "REST APIs": 5},
                 "has_tests": True,
-                "top_repos": ["Spoon-Knife", "Hello-World", "linguist", "octocat.github.io"]
+                "top_repos": ["Spoon-Knife", "Hello-World", "fastapi-ledger-service", "k8s-deployment-specs"]
             }
         }
 
@@ -74,7 +74,7 @@ class GitHubTool:
                             "repos_count": demo["repos_count"],
                             "total_inspected_repos": demo["repos_count"],
                             "skill_repo_counts": demo["skill_repo_counts"],
-                            "languages": {"Python": 8, "FastAPI": 6},
+                            "languages": {"Python": 6, "Docker": 5},
                             "has_tests": demo["has_tests"],
                             "top_repos": demo["top_repos"]
                         }
@@ -91,8 +91,8 @@ class GitHubTool:
                         "top_repos": []
                     }
 
-                if user_res.status_code == 403:
-                    # Rate limit exceeded: check if demo profile or return visible resume-only
+                if user_res.status_code in [403, 429]:
+                    # Rate limit exceeded: check if demo profile or return explicit state
                     if clean_user.lower() in demo_profiles:
                         demo = demo_profiles[clean_user.lower()]
                         return {
@@ -103,15 +103,15 @@ class GitHubTool:
                             "repos_count": demo["repos_count"],
                             "total_inspected_repos": demo["repos_count"],
                             "skill_repo_counts": demo["skill_repo_counts"],
-                            "languages": {"Python": 8, "FastAPI": 6},
+                            "languages": {"Python": 6, "Docker": 5},
                             "has_tests": demo["has_tests"],
                             "top_repos": demo["top_repos"]
                         }
                     return {
                         "verified": False,
-                        "verification_state": "resume-only",
+                        "verification_state": "GitHub unavailable",
                         "username": clean_user,
-                        "reason": "GitHub API rate limit exceeded (60 req/hr). Visible state: resume-only.",
+                        "reason": "GitHub API rate limit exceeded (60 req/hr). Explicit state: GitHub unavailable.",
                         "repos_count": 0,
                         "total_inspected_repos": 0,
                         "skill_repo_counts": {},
@@ -123,7 +123,7 @@ class GitHubTool:
                 if user_res.status_code != 200:
                     return {
                         "verified": False,
-                        "verification_state": "resume-only",
+                        "verification_state": "GitHub unavailable",
                         "username": clean_user,
                         "reason": f"GitHub API error (status {user_res.status_code})",
                         "repos_count": 0,

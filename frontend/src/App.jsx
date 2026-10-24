@@ -982,10 +982,16 @@ Contact: +1 (555) 987-1234, 88 Mission Boulevard, Seattle WA, elena.rostova@outl
                 <span className={`px-2 py-0.5 rounded text-xs font-semibold border flex items-center gap-1.5 ${
                   hireDetail.skill_map.verification_state === 'verified'
                     ? 'bg-emerald-950 text-emerald-300 border-emerald-800'
+                    : hireDetail.skill_map.verification_state === 'GitHub unavailable'
+                    ? 'bg-rose-950 text-rose-300 border-rose-800'
                     : 'bg-amber-950 text-amber-300 border-amber-800'
                 }`}>
                   <GitBranch className="w-3.5 h-3.5" />
-                  {hireDetail.skill_map.verification_state === 'verified' ? 'GitHub Verified' : 'Resume-Only'}
+                  {hireDetail.skill_map.verification_state === 'verified'
+                    ? 'GitHub Verified'
+                    : hireDetail.skill_map.verification_state === 'GitHub unavailable'
+                    ? 'GitHub Unavailable'
+                    : 'Resume-Only'}
                 </span>
                 <span className="text-xs text-slate-400 font-mono">
                   {hireDetail.skill_map.skills.length} skills

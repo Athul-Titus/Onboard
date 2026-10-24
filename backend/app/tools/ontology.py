@@ -36,23 +36,61 @@ class SkillOntology:
             for alias in aliases:
                 self.alias_map[alias.lower()] = canonical
 
+        # Precompute dense n-gram embedding vectors for all canonical skills and aliases
+        self.embedding_vectors: Dict[str, Tuple[Dict[str, int], float, str]] = {}
+        for alias, canonical in self.alias_map.items():
+            vec, norm = self._compute_embedding(alias)
+            self.embedding_vectors[alias] = (vec, norm, canonical)
+
+    def _compute_embedding(self, text: str, n: int = 3) -> Tuple[Dict[str, int], float]:
+        import math
+        from collections import Counter
+        padded = f"^{text.lower().strip()}$"
+        ngrams = [padded[i:i+n] for i in range(len(padded)-n+1)] if len(padded) >= n else [padded]
+        counts = Counter(ngrams)
+        norm = math.sqrt(sum(v*v for v in counts.values()))
+        return counts, norm
+
+    def _cosine_similarity(self, v1: Dict[str, int], norm1: float, v2: Dict[str, int], norm2: float) -> float:
+        if norm1 <= 0 or norm2 <= 0:
+            return 0.0
+        dot = sum(v * v2.get(k, 0) for k, v in v1.items())
+        return dot / (norm1 * norm2)
+
     def normalize(self, raw_skill: str) -> Tuple[str, bool]:
         """
         Returns (canonical_name, was_matched).
+        1. Exact alias dictionary lookup (O(1))
+        2. Substring/prefix match
+        3. Dense embedding similarity match
         If matched, returns the canonical ontology string.
         Otherwise returns cleaned raw_skill.
         """
         clean = raw_skill.strip()
         lowered = clean.lower()
 
-        # 1. Direct alias match
+        # 1. Direct alias match (O(1))
         if lowered in self.alias_map:
             return self.alias_map[lowered], True
 
         # 2. Substring/prefix match
         for alias, canonical in self.alias_map.items():
-            if alias in lowered or lowered in alias:
+            if len(alias) >= 3 and (alias in lowered or lowered in alias):
                 return canonical, True
+
+        # 3. Dense Embedding Similarity match (threshold >= 0.70)
+        q_vec, q_norm = self._compute_embedding(lowered)
+        best_sim = 0.0
+        best_canonical = None
+
+        for alias, (vec, norm, canonical) in self.embedding_vectors.items():
+            sim = self._cosine_similarity(q_vec, q_norm, vec, norm)
+            if sim > best_sim:
+                best_sim = sim
+                best_canonical = canonical
+
+        if best_sim >= 0.70 and best_canonical:
+            return best_canonical, True
 
         return clean, False
 

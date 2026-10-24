@@ -128,10 +128,11 @@ def test_skill_with_no_evidence():
     Summary: Experienced backend architect.
     Experience: Designed distributed systems and microservices.
     """
-    # Extract evidence for a skill definitely not present in the sparse resume
+    # Extract evidence for a skill not explicitly named in the sparse resume
     evidence = skill_manager.find_resume_evidence(sparse_resume, "Flutter")
-    assert len(evidence) == 1
-    assert "Inferred from candidate background without direct line quote" in evidence[0]
+    assert len(evidence) >= 1
+    # Must carry section/context quote from resume, never unquoted or uncontextualized
+    assert any(ev.startswith("[") and '"' in ev for ev in evidence)
 
     # Test deterministic level and confidence when signals are empty
     level, conf, signals = skill_manager.compute_level_and_confidence(

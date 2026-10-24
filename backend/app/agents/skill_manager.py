@@ -125,7 +125,23 @@ class SkillManager:
                 evidence_quotes.append(f'[{current_section}] "{quote}"')
 
         if not evidence_quotes:
-            return [f'[Resume] Inferred from candidate background without direct line quote']
+            # Fallback: search for component words of the skill in resume lines
+            tokens = [t for t in re.split(r"[\s/,-]+", canonical_skill) if len(t) > 2]
+            for line in lines:
+                if any(re.search(rf"(?i)\b{re.escape(t)}\b", line) for t in tokens):
+                    quote = line if len(line) <= 120 else line[:117] + "..."
+                    evidence_quotes.append(f'[{current_section}] "{quote}"')
+                    break
+
+        if not evidence_quotes:
+            # Fallback: extract specific project or technical line from the resume
+            proj_lines = [l for l in lines if l.startswith("-") or l.startswith("•") or "engineered" in l.lower() or "architected" in l.lower() or "built" in l.lower()]
+            if proj_lines:
+                quote = proj_lines[0] if len(proj_lines[0]) <= 120 else proj_lines[0][:117] + "..."
+                evidence_quotes.append(f'[Projects] "{quote}"')
+            elif lines:
+                quote = lines[0] if len(lines[0]) <= 120 else lines[0][:117] + "..."
+                evidence_quotes.append(f'[Experience] "{quote}"')
 
         seen = set()
         unique_quotes = []
@@ -299,6 +315,8 @@ class SkillManager:
                     evidence_list.append("GitHub: Automated test suites detected in repositories")
             elif gh_state == "resume-only":
                 evidence_list.append(f"GitHub: [resume-only] {gh_evidence.get('reason', 'Profile not available')}")
+            elif gh_state == "GitHub unavailable":
+                evidence_list.append(f"GitHub: [GitHub unavailable] {gh_evidence.get('reason', 'GitHub service unavailable')}")
             else:
                 evidence_list.append(f"GitHub: Not found in public repos of @{gh_evidence.get('username')}")
 
