@@ -25,7 +25,8 @@ import {
   BookOpen,
   UploadCloud,
   FileCheck,
-  FlaskConical
+  FlaskConical,
+  Trash2
 } from 'lucide-react';
 
 const API_BASE = 'http://localhost:8000';
@@ -188,12 +189,36 @@ Contact: +1 (555) 987-1234, 88 Mission Boulevard, Seattle WA, elena.rostova@outl
       if (res.ok) {
         const data = await res.json();
         setHires(data);
-        if (data.length > 0 && !selectedHireId) {
-          setSelectedHireId(data[0].id);
-        }
+        setSelectedHireId((prev) => {
+          if (prev && data.some((h) => h.id === prev)) {
+            return prev;
+          }
+          return data[0]?.id || null;
+        });
       }
     } catch (err) {
       console.error('Error fetching hires:', err);
+    }
+  };
+
+  // Delete a hire
+  const handleDeleteHire = async (e, hireId) => {
+    e.stopPropagation();
+    if (!hireId) return;
+    const target = hires.find((h) => h.id === hireId);
+    const confirmName = target ? target.name : 'this hire';
+    if (!window.confirm(`Delete onboarding record for ${confirmName}? This action cannot be undone.`)) {
+      return;
+    }
+    try {
+      const res = await fetch(`${API_BASE}/hires/${hireId}`, { method: 'DELETE' });
+      if (res.ok) {
+        const remaining = hires.filter((h) => h.id !== hireId);
+        setHires(remaining);
+        setSelectedHireId((prev) => (prev === hireId ? (remaining[0]?.id || null) : prev));
+      }
+    } catch (err) {
+      console.error('Error deleting hire:', err);
     }
   };
 
@@ -430,17 +455,34 @@ Contact: +1 (555) 987-1234, 88 Mission Boulevard, Seattle WA, elena.rostova@outl
 
         <div className="flex items-center gap-3">
           {hires.length > 0 && (
-            <select
-              value={selectedHireId || ''}
-              onChange={(e) => setSelectedHireId(e.target.value)}
-              className="bg-slate-900 border border-slate-700 text-sm rounded-lg px-3 py-1.5 text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            >
-              {hires.map((h) => (
-                <option key={h.id} value={h.id}>
-                  {h.name} ({h.role}) - {h.status}
-                </option>
-              ))}
-            </select>
+            <div className="flex items-center gap-1.5">
+              <select
+                value={selectedHireId || ''}
+                onChange={(e) => setSelectedHireId(e.target.value)}
+                className="bg-slate-900 border border-slate-700 text-sm rounded-lg px-3 py-1.5 text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 max-w-[280px] truncate"
+              >
+                {hires.map((h) => {
+                  const time = h.created_at
+                    ? new Date(h.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                    : '';
+                  return (
+                    <option key={h.id} value={h.id}>
+                      {h.name} ({h.role}) - {h.status} {time ? `[${time}]` : ''}
+                    </option>
+                  );
+                })}
+              </select>
+              {selectedHireId && (
+                <button
+                  type="button"
+                  onClick={(e) => handleDeleteHire(e, selectedHireId)}
+                  title="Delete this hire record"
+                  className="p-1.5 rounded-lg text-slate-400 hover:text-red-400 hover:bg-slate-800 border border-slate-700/60 transition"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              )}
+            </div>
           )}
 
           <button

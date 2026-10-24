@@ -315,10 +315,39 @@ def list_hires(db: Session = Depends(get_db)):
             start_date=e.start_date,
             email=e.email,
             status=e.status,
-            github_username=e.github_username
+            github_username=e.github_username,
+            created_at=e.created_at.isoformat() if e.created_at else None
         )
         for e in employees
     ]
+
+@app.delete("/hires/{id}")
+def delete_hire(id: str, db: Session = Depends(get_db)):
+    """Deletes an onboarding record and all associated agent plans and audit logs."""
+    emp = db.query(EmployeeModel).filter(EmployeeModel.id == id).first()
+    if not emp:
+        raise HTTPException(status_code=404, detail="Hire not found")
+    name = emp.name
+    db.delete(emp)
+    db.commit()
+    logger.info(f"Deleted hire record {id} ({name})")
+    return {"status": "ok", "message": f"Hire '{name}' deleted successfully."}
+
+@app.post("/hires/clean-duplicates")
+def clean_duplicate_hires(db: Session = Depends(get_db)):
+    """Keeps the most recent record for each employee name and removes duplicate runs."""
+    employees = db.query(EmployeeModel).order_by(EmployeeModel.created_at.desc()).all()
+    seen_names = set()
+    deleted_count = 0
+    for emp in employees:
+        norm_name = emp.name.strip().lower()
+        if norm_name in seen_names:
+            db.delete(emp)
+            deleted_count += 1
+        else:
+            seen_names.add(norm_name)
+    db.commit()
+    return {"status": "ok", "deleted_count": deleted_count, "remaining_count": len(seen_names)}
 
 @app.get("/hires/{id}", response_model=HireDetailResponse)
 def get_hire(id: str, db: Session = Depends(get_db)):

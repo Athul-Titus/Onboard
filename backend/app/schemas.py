@@ -17,6 +17,7 @@ class Employee(BaseModel):
     email: Optional[str] = None
     status: str = "queued"
     github_username: Optional[str] = None
+    created_at: Optional[str] = None
 
 # 2. SkillItem & SkillMap
 SkillLevel = Literal["beginner", "intermediate", "advanced"]
