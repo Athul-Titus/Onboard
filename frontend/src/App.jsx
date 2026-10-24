@@ -1147,7 +1147,6 @@ Contact: +1 (555) 987-1234, 88 Mission Boulevard, Seattle WA, elena.rostova@outl
                 </div>
               ))}
             </div>
-            </div>
           </div>
         )}
 
