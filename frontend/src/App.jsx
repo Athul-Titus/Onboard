@@ -46,7 +46,7 @@ export default function App() {
   // Intake form state
   const [formData, setFormData] = useState({
     name: 'John Doe',
-    role: 'Senior Backend Engineer',
+    role: 'Backend',
     startDate: '2026-11-01',
     githubUsername: 'octocat',
     resumeText: `John Doe
@@ -1160,24 +1160,47 @@ Contact: +1-555-0199, 123 Tech Lane, San Francisco CA, john.personal@gmail.com, 
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-slate-300 font-semibold mb-1">Role</label>
-                  <input
-                    type="text"
+                  <label className="block text-slate-300 font-semibold mb-1">
+                    Role <span className="text-rose-400">*</span>
+                  </label>
+                  <select
                     required
                     value={formData.role}
                     onChange={(e) => setFormData({ ...formData, role: e.target.value })}
                     className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-white focus:ring-2 focus:ring-indigo-500"
-                  />
+                  >
+                    <option value="Backend">Backend</option>
+                    <option value="Frontend">Frontend</option>
+                    <option value="Data/ML">Data/ML</option>
+                    <option value="DevOps">DevOps</option>
+                    <option value="Mobile">Mobile</option>
+                  </select>
                 </div>
                 <div>
-                  <label className="block text-slate-300 font-semibold mb-1">GitHub Username</label>
+                  <label className="block text-slate-300 font-semibold mb-1">
+                    Start Date <span className="text-rose-400">*</span>
+                  </label>
                   <input
-                    type="text"
-                    value={formData.githubUsername}
-                    onChange={(e) => setFormData({ ...formData, githubUsername: e.target.value })}
+                    type="date"
+                    required
+                    value={formData.startDate}
+                    onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
                     className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-white focus:ring-2 focus:ring-indigo-500"
                   />
                 </div>
+              </div>
+
+              <div>
+                <label className="block text-slate-300 font-semibold mb-1">
+                  GitHub Username <span className="text-slate-500 font-normal text-[11px]">(optional, for repo verification)</span>
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. octocat (leave empty for resume-only)"
+                  value={formData.githubUsername}
+                  onChange={(e) => setFormData({ ...formData, githubUsername: e.target.value })}
+                  className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-white focus:ring-2 focus:ring-indigo-500 placeholder:text-slate-600"
+                />
               </div>
 
               {/* Resume File Upload & Fallback */}
