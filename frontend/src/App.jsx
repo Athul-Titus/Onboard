@@ -19,7 +19,13 @@ import {
   Lock,
   Layers,
   Sparkles,
-  Info
+  Info,
+  Award,
+  BarChart3,
+  GitBranch,
+  BookOpen,
+  HelpCircle,
+  Search
 } from 'lucide-react';
 
 const API_BASE = 'http://localhost:8000';
@@ -32,7 +38,8 @@ export default function App() {
   const [showIntakeModal, setShowIntakeModal] = useState(false);
   const [showOverrideModal, setShowOverrideModal] = useState(false);
   const [citationModal, setCitationModal] = useState(null);
-  const [activeTab, setActiveTab] = useState('workflow'); // 'workflow' | 'guide' | 'audit'
+  const [skillEvidenceModal, setSkillEvidenceModal] = useState(null);
+  const [activeTab, setActiveTab] = useState('workflow'); // 'workflow' | 'skills' | 'guide' | 'audit'
 
   // Intake form state
   const [formData, setFormData] = useState({
@@ -195,8 +202,46 @@ Contact: +1-555-0199, 123 Tech Lane, San Francisco CA, john.personal@gmail.com, 
     }
   };
 
+  const getLevelBadge = (level) => {
+    switch (level?.toLowerCase()) {
+      case 'advanced':
+        return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-purple-950 text-purple-300 border border-purple-800">Advanced</span>;
+      case 'intermediate':
+        return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium bg-indigo-950 text-indigo-300 border border-indigo-800">Intermediate</span>;
+      default:
+        return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium bg-slate-800 text-slate-400 border border-slate-700">Beginner</span>;
+    }
+  };
+
+  // Group skills by category for display
+  const groupSkillsByCategory = (skills = []) => {
+    const groups = {};
+    skills.forEach((s) => {
+      const cat = s.category || 'tool';
+      if (!groups[cat]) groups[cat] = [];
+      groups[cat].push(s);
+    });
+    return groups;
+  };
+
+  // Compute category statistics for the bar chart
+  const getCategoryStats = (skills = []) => {
+    const counts = {};
+    const confSums = {};
+    skills.forEach((s) => {
+      const cat = s.category || 'tool';
+      counts[cat] = (counts[cat] || 0) + 1;
+      confSums[cat] = (confSums[cat] || 0) + (s.confidence || 0.8);
+    });
+    return Object.keys(counts).map((cat) => ({
+      category: cat,
+      count: counts[cat],
+      avgConfidence: Math.round((confSums[cat] / counts[cat]) * 100)
+    }));
+  };
+
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col">
+    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans">
       {/* Top Header */}
       <header className="border-b border-slate-800 bg-slate-900/60 backdrop-blur sticky top-0 z-30 px-6 py-4 flex items-center justify-between">
         <div className="flex items-center gap-3">
@@ -264,6 +309,17 @@ Contact: +1-555-0199, 123 Tech Lane, San Francisco CA, john.personal@gmail.com, 
           >
             <Layers className="w-4 h-4" />
             Agent Pipeline & Approvals
+          </button>
+          <button
+            onClick={() => setActiveTab('skills')}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition flex items-center gap-2 ${
+              activeTab === 'skills'
+                ? 'bg-indigo-600/10 text-indigo-400 border border-indigo-500/30 font-semibold'
+                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
+            }`}
+          >
+            <BarChart3 className="w-4 h-4" />
+            Evidence Skill Map & Gap Analysis
           </button>
           <button
             onClick={() => setActiveTab('guide')}
@@ -395,7 +451,7 @@ Contact: +1-555-0199, 123 Tech Lane, San Francisco CA, john.personal@gmail.com, 
               )}
             </div>
 
-            {/* CARD 2: SKILL MANAGER */}
+            {/* CARD 2: SKILL MANAGER OVERVIEW */}
             <div className="bg-slate-900/50 border border-slate-800 rounded-2xl p-5 flex flex-col justify-between">
               <div>
                 <div className="flex items-center justify-between mb-4">
@@ -405,7 +461,7 @@ Contact: +1-555-0199, 123 Tech Lane, San Francisco CA, john.personal@gmail.com, 
                     </div>
                     <div>
                       <h3 className="font-semibold text-white">Skill Manager</h3>
-                      <p className="text-xs text-slate-400">PII Scrubbing, GitHub Evidence & Ontology Normalization</p>
+                      <p className="text-xs text-slate-400">PII Redaction, GitHub Verified Portfolios & Citations</p>
                     </div>
                   </div>
                   {hireDetail?.steps?.skills && getStatusBadge(hireDetail.steps.skills.status)}
@@ -413,6 +469,22 @@ Contact: +1-555-0199, 123 Tech Lane, San Francisco CA, john.personal@gmail.com, 
 
                 {hireDetail?.skill_map ? (
                   <div className="space-y-3">
+                    {/* Verification State Banner */}
+                    <div className="flex items-center justify-between text-xs bg-slate-950/70 p-2.5 rounded-xl border border-slate-800">
+                      <div className="flex items-center gap-2">
+                        <span className={`w-2 h-2 rounded-full ${hireDetail.skill_map.verification_state === 'verified' ? 'bg-emerald-400' : 'bg-amber-400'}`}></span>
+                        <span className="text-slate-300 font-medium">
+                          {hireDetail.skill_map.github_summary || 'Verification Active'}
+                        </span>
+                      </div>
+                      <button
+                        onClick={() => setActiveTab('skills')}
+                        className="text-xs text-indigo-400 hover:text-indigo-300 flex items-center gap-1"
+                      >
+                        Detailed Map <ChevronRight className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+
                     <div className="flex items-center justify-between text-xs text-slate-400 pb-1 border-b border-slate-800">
                       <span>Total Skills: <strong className="text-white">{hireDetail.skill_map.skills.length}</strong></span>
                       <div className="flex items-center gap-3">
@@ -427,12 +499,13 @@ Contact: +1-555-0199, 123 Tech Lane, San Francisco CA, john.personal@gmail.com, 
                       </div>
                     </div>
 
-                    {/* Skill Badges Matrix */}
+                    {/* Skill Badges Quick Grid */}
                     <div className="grid grid-cols-2 gap-2 max-h-52 overflow-y-auto pr-1">
                       {hireDetail.skill_map.skills.map((s, idx) => (
                         <div
                           key={idx}
-                          className="bg-slate-950/60 border border-slate-800/80 p-2 rounded-xl flex flex-col justify-between"
+                          onClick={() => setSkillEvidenceModal(s)}
+                          className="bg-slate-950/60 hover:bg-slate-950 border border-slate-800/80 hover:border-slate-700 p-2.5 rounded-xl flex flex-col justify-between cursor-pointer transition"
                         >
                           <div className="flex items-center justify-between gap-1">
                             <span className="text-xs font-semibold text-slate-200 truncate">{s.skill}</span>
@@ -446,8 +519,9 @@ Contact: +1-555-0199, 123 Tech Lane, San Francisco CA, john.personal@gmail.com, 
                               </span>
                             )}
                           </div>
-                          <div className="text-[10px] text-slate-500 mt-1 line-clamp-1" title={s.evidence[0] || 'Resume claimed'}>
-                            {s.evidence[0] || 'Resume claimed'}
+                          <div className="flex items-center justify-between mt-2 pt-1.5 border-t border-slate-900 text-[10px]">
+                            {getLevelBadge(s.level)}
+                            <span className="text-slate-400 font-mono">{Math.round((s.confidence || 0.8) * 100)}% conf</span>
                           </div>
                         </div>
                       ))}
@@ -469,7 +543,7 @@ Contact: +1-555-0199, 123 Tech Lane, San Francisco CA, john.personal@gmail.com, 
                     </div>
                     <div>
                       <h3 className="font-semibold text-white">Project Manager Agent</h3>
-                      <p className="text-xs text-slate-400">Deterministic Scoring Formula (Weights: 40% Match, 25% Gap, 20% Capacity, -15% Learning)</p>
+                      <p className="text-xs text-slate-400">Deterministic Scoring Formula (40% Match, 25% Gap, 20% Capacity, -15% Learning)</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
@@ -572,7 +646,211 @@ Contact: +1-555-0199, 123 Tech Lane, San Francisco CA, john.personal@gmail.com, 
           </div>
         )}
 
-        {/* TAB 2: PERSONALIZED 30-DAY GUIDE (RAG) */}
+        {/* TAB 2: DETAILED SKILL MAP & GAP ANALYSIS */}
+        {activeTab === 'skills' && hireDetail?.skill_map && (
+          <div className="space-y-6">
+            {/* Header with Verification State */}
+            <div className="bg-slate-900/40 border border-slate-800 rounded-2xl p-5 flex flex-wrap items-center justify-between gap-4">
+              <div>
+                <h3 className="font-bold text-white text-base flex items-center gap-2">
+                  <Award className="w-5 h-5 text-indigo-400" />
+                  Evidence-Backed Technical Skill Map
+                </h3>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  Every skill is mapped to canonical ontology, categorized, and backed by specific resume quotes and GitHub evidence.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <span className={`px-3 py-1 rounded-full text-xs font-semibold border flex items-center gap-1.5 ${
+                  hireDetail.skill_map.verification_state === 'verified'
+                    ? 'bg-emerald-950 text-emerald-300 border-emerald-800'
+                    : 'bg-amber-950 text-amber-300 border-amber-800'
+                }`}>
+                  <GitBranch className="w-3.5 h-3.5" />
+                  {hireDetail.skill_map.verification_state === 'verified' ? 'GitHub Verified' : 'Resume-Only Mode'}
+                </span>
+                <span className="text-xs text-slate-400 font-mono">
+                  {hireDetail.skill_map.skills.length} Competencies
+                </span>
+              </div>
+            </div>
+
+            {/* Category Distribution Bar Chart */}
+            <div className="bg-slate-900/50 border border-slate-800 rounded-2xl p-5 space-y-3">
+              <div className="flex items-center justify-between pb-2 border-b border-slate-800">
+                <h4 className="text-sm font-bold text-white flex items-center gap-2">
+                  <BarChart3 className="w-4 h-4 text-cyan-400" />
+                  Category Breakdown & Confidence
+                </h4>
+                <span className="text-xs text-slate-400">Deterministic signal aggregation</span>
+              </div>
+
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 pt-1">
+                {getCategoryStats(hireDetail.skill_map.skills).map((stat, idx) => (
+                  <div key={idx} className="bg-slate-950/70 p-3 rounded-xl border border-slate-800">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="font-semibold text-slate-200 capitalize">{stat.category}</span>
+                      <span className="font-bold text-indigo-400">{stat.count}</span>
+                    </div>
+                    <div className="mt-2">
+                      <div className="flex justify-between text-[10px] text-slate-400 mb-1">
+                        <span>Avg Confidence</span>
+                        <span>{stat.avgConfidence}%</span>
+                      </div>
+                      <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
+                        <div
+                          className="bg-gradient-to-r from-indigo-500 to-cyan-400 h-1.5 rounded-full"
+                          style={{ width: `${stat.avgConfidence}%` }}
+                        ></div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Grouped Skills by Category */}
+            <div className="space-y-4">
+              <h4 className="text-sm font-bold text-slate-300 flex items-center gap-2">
+                <Layers className="w-4 h-4 text-indigo-400" />
+                Grouped Competency Map (Click any skill for line-by-line evidence)
+              </h4>
+
+              {Object.entries(groupSkillsByCategory(hireDetail.skill_map.skills)).map(([category, skills]) => (
+                <div key={category} className="bg-slate-900/40 border border-slate-800/80 rounded-2xl p-4 space-y-3">
+                  <div className="flex items-center justify-between pb-1.5 border-b border-slate-800/60">
+                    <span className="font-bold text-xs uppercase tracking-wider text-slate-300 capitalize flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-indigo-500"></span>
+                      {category}
+                    </span>
+                    <span className="text-xs text-slate-400 font-mono">{skills.length} skills</span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                    {skills.map((s, idx) => (
+                      <div
+                        key={idx}
+                        onClick={() => setSkillEvidenceModal(s)}
+                        className="bg-slate-950/80 hover:bg-slate-950 border border-slate-800 hover:border-indigo-500/50 p-3 rounded-xl cursor-pointer transition shadow-sm space-y-2"
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="font-bold text-sm text-white">{s.skill}</span>
+                          {s.status === 'verified' ? (
+                            <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-950 text-emerald-300 border border-emerald-800">
+                              Verified
+                            </span>
+                          ) : (
+                            <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-slate-800 text-slate-400">
+                              Claimed
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="flex items-center justify-between text-xs pt-1 border-t border-slate-900">
+                          {getLevelBadge(s.level)}
+                          <div className="flex items-center gap-1 text-[11px] font-mono text-slate-300">
+                            <span>Confidence:</span>
+                            <strong className="text-cyan-400">{Math.round((s.confidence || 0.8) * 100)}%</strong>
+                          </div>
+                        </div>
+
+                        {/* First supporting evidence preview */}
+                        <div className="text-[11px] text-slate-400 line-clamp-1 italic bg-slate-900/60 px-2 py-1 rounded border border-slate-800/50">
+                          {s.evidence[0] || 'Click to view evidence'}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Per-Team Gap Analysis Panel */}
+            <div className="bg-slate-900/50 border border-slate-800 rounded-2xl p-5 space-y-4">
+              <div className="flex items-center justify-between pb-2 border-b border-slate-800">
+                <div>
+                  <h4 className="text-sm font-bold text-white flex items-center gap-2">
+                    <GitBranch className="w-4 h-4 text-purple-400" />
+                    Per-Team Competency Gap Analysis
+                  </h4>
+                  <p className="text-xs text-slate-400">Deterministic coverage percentage and skill gap breakdown across engineering teams.</p>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                {Object.entries(hireDetail.skill_map.gaps_by_team).map(([teamName, gapData]) => {
+                  const coverage = gapData.coverage_percent || 0;
+                  const matched = gapData.matched_skills || [];
+                  const missing = gapData.missing_skills || [];
+                  return (
+                    <div key={teamName} className="bg-slate-950/70 p-4 rounded-xl border border-slate-800 space-y-3">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div className="flex items-center gap-3">
+                          <h5 className="font-bold text-sm text-white">{teamName}</h5>
+                          <span className={`px-2 py-0.5 rounded text-xs font-mono font-bold ${
+                            coverage >= 70 ? 'bg-emerald-950 text-emerald-400 border border-emerald-800' :
+                            coverage >= 40 ? 'bg-indigo-950 text-indigo-300 border border-indigo-800' :
+                            'bg-amber-950 text-amber-300 border border-amber-800'
+                          }`}>
+                            {coverage}% Coverage
+                          </span>
+                        </div>
+                        <span className="text-xs text-slate-400">
+                          {matched.length} matched / {matched.length + missing.length} required
+                        </span>
+                      </div>
+
+                      {/* Coverage Progress Bar */}
+                      <div className="w-full bg-slate-900 h-2 rounded-full overflow-hidden">
+                        <div
+                          className={`h-2 rounded-full ${
+                            coverage >= 70 ? 'bg-emerald-500' : coverage >= 40 ? 'bg-indigo-500' : 'bg-amber-500'
+                          }`}
+                          style={{ width: `${coverage}%` }}
+                        ></div>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs pt-1">
+                        <div>
+                          <span className="text-slate-400 block mb-1">Matched Skills:</span>
+                          <div className="flex flex-wrap gap-1.5">
+                            {matched.length > 0 ? (
+                              matched.map((m, mIdx) => (
+                                <span key={mIdx} className="px-2 py-0.5 rounded bg-emerald-950/50 text-emerald-300 border border-emerald-800 text-[11px]">
+                                  ✓ {m}
+                                </span>
+                              ))
+                            ) : (
+                              <span className="text-slate-500 italic">None</span>
+                            )}
+                          </div>
+                        </div>
+
+                        <div>
+                          <span className="text-slate-400 block mb-1">Missing / Ramp-up Skills:</span>
+                          <div className="flex flex-wrap gap-1.5">
+                            {missing.length > 0 ? (
+                              missing.map((mis, misIdx) => (
+                                <span key={misIdx} className="px-2 py-0.5 rounded bg-rose-950/40 text-rose-300 border border-rose-800/60 text-[11px]">
+                                  + {mis}
+                                </span>
+                              ))
+                            ) : (
+                              <span className="text-emerald-400 italic font-semibold">100% Core Skill Match</span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* TAB 3: PERSONALIZED 30-DAY GUIDE (RAG) */}
         {activeTab === 'guide' && (
           <div className="space-y-6">
             <div className="bg-slate-900/40 border border-slate-800 rounded-2xl p-5 flex items-center justify-between">
@@ -637,7 +915,7 @@ Contact: +1-555-0199, 123 Tech Lane, San Francisco CA, john.personal@gmail.com, 
           </div>
         )}
 
-        {/* TAB 3: AUDIT TRAIL */}
+        {/* TAB 4: AUDIT TRAIL */}
         {activeTab === 'audit' && (
           <div className="bg-slate-900/50 border border-slate-800 rounded-2xl p-5 space-y-4">
             <div className="flex items-center justify-between pb-3 border-b border-slate-800">
@@ -672,6 +950,98 @@ Contact: +1-555-0199, 123 Tech Lane, San Francisco CA, john.personal@gmail.com, 
           </div>
         )}
       </main>
+
+      {/* MODAL: READABLE SKILL EVIDENCE & SIGNALS */}
+      {skillEvidenceModal && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-lg w-full p-6 space-y-4 shadow-2xl max-h-[85vh] overflow-y-auto">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-indigo-950 flex items-center justify-center border border-indigo-800">
+                  <Award className="w-4 h-4 text-indigo-400" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-white flex items-center gap-2">
+                    {skillEvidenceModal.skill}
+                    {getLevelBadge(skillEvidenceModal.level)}
+                  </h3>
+                  <span className="text-xs text-slate-400 capitalize">Category: {skillEvidenceModal.category}</span>
+                </div>
+              </div>
+              <button onClick={() => setSkillEvidenceModal(null)} className="text-slate-400 hover:text-white">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Metrics & Confidence */}
+            <div className="grid grid-cols-2 gap-3 text-xs">
+              <div className="bg-slate-950 p-3 rounded-xl border border-slate-800">
+                <span className="text-slate-400 block mb-1">Verification Status</span>
+                <span className={`font-bold ${skillEvidenceModal.status === 'verified' ? 'text-emerald-400' : 'text-slate-300'}`}>
+                  {skillEvidenceModal.status === 'verified' ? '✓ Verified by External Signals' : 'Claimed (Resume Only)'}
+                </span>
+              </div>
+              <div className="bg-slate-950 p-3 rounded-xl border border-slate-800">
+                <span className="text-slate-400 block mb-1">Confidence Score</span>
+                <div className="flex items-center gap-2">
+                  <span className="font-bold font-mono text-cyan-400 text-sm">
+                    {Math.round((skillEvidenceModal.confidence || 0.8) * 100)}%
+                  </span>
+                  <div className="flex-1 bg-slate-800 h-1.5 rounded-full overflow-hidden">
+                    <div
+                      className="bg-cyan-400 h-1.5 rounded-full"
+                      style={{ width: `${(skillEvidenceModal.confidence || 0.8) * 100}%` }}
+                    ></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Deterministic Signals Breakdown */}
+            {skillEvidenceModal.signals_used && (
+              <div className="bg-slate-950/70 p-3.5 rounded-xl border border-slate-800 space-y-2 text-xs">
+                <span className="font-semibold text-slate-300 block">Deterministic Signals Evaluated:</span>
+                <div className="grid grid-cols-2 gap-2 text-[11px] text-slate-400">
+                  <div>Years Experience: <strong className="text-white">{skillEvidenceModal.signals_used.years_experience || 0} yrs</strong></div>
+                  <div>Project Mentions: <strong className="text-white">{skillEvidenceModal.signals_used.project_mentions || 0} quotes</strong></div>
+                  <div>GitHub Repos: <strong className="text-white">{skillEvidenceModal.signals_used.repo_count || 0} repos</strong></div>
+                  <div>Certified: <strong className="text-white">{skillEvidenceModal.signals_used.certified ? 'Yes' : 'No'}</strong></div>
+                </div>
+                {skillEvidenceModal.signals_used.derivation && (
+                  <div className="text-[11px] text-indigo-300 pt-1 border-t border-slate-900">
+                    {skillEvidenceModal.signals_used.derivation.join(' • ')}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Supporting Evidence Quotes */}
+            <div className="space-y-2 text-xs">
+              <span className="font-semibold text-slate-300 block">Evidence & Line Quotes:</span>
+              <div className="space-y-1.5">
+                {skillEvidenceModal.evidence?.map((ev, evIdx) => (
+                  <div
+                    key={evIdx}
+                    className="p-2.5 rounded-lg bg-slate-950 border border-slate-800 text-[11px] font-mono leading-relaxed text-slate-300"
+                  >
+                    <span className="text-indigo-400 font-bold mr-1.5">›</span>
+                    {ev}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex justify-end pt-2 border-t border-slate-800">
+              <button
+                onClick={() => setSkillEvidenceModal(null)}
+                className="px-4 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold"
+              >
+                Done
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* MODAL: NEW HIRE INTAKE */}
       {showIntakeModal && (
