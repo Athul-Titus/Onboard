@@ -34,11 +34,20 @@ class Settings(BaseSettings):
     # GitHub
     GITHUB_TOKEN: str = ""
 
-    # Orchestrator & Scoring Weights
-    SCORE_WEIGHT_SKILL_MATCH: float = 0.40
-    SCORE_WEIGHT_GAP_COVERAGE: float = 0.25
-    SCORE_WEIGHT_CAPACITY: float = 0.20
+    # Orchestrator & Scoring Weights (positive weights sum to 1.0, learning gap penalty 0.15)
+    SCORE_WEIGHT_SKILL_MATCH: float = 0.45
+    SCORE_WEIGHT_GAP_COVERAGE: float = 0.30
+    SCORE_WEIGHT_CAPACITY: float = 0.25
     SCORE_WEIGHT_LEARNING_GAP: float = 0.15
+
+    # Skill Status Weights
+    SKILL_WEIGHT_VERIFIED: float = 1.0
+    SKILL_WEIGHT_CLAIMED: float = 0.7
+    SKILL_WEIGHT_UNCLEAR: float = 0.3
+
+    # Quality and Margin Thresholds
+    SCORE_WEAK_FIT_THRESHOLD: float = 0.35
+    SCORE_CLOSE_CALL_MARGIN: float = 0.05
 
     LLM_TIMEOUT_SECONDS: int = 30
     LLM_MAX_RETRIES: int = 1

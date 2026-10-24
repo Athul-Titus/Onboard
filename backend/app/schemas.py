@@ -53,12 +53,36 @@ class Project(BaseModel):
     description: Optional[str] = None
 
 # 4. Assignment
+class TermDetail(BaseModel):
+    value: float
+    weight: float
+    contribution: float
+
+class ScoringTerms(BaseModel):
+    skill_match: TermDetail
+    gap_coverage: TermDetail
+    capacity: TermDetail
+    learning_gap: TermDetail
+
 class ScoreBreakdown(BaseModel):
     skill_match: float
     gap_coverage: float
     capacity: float
     learning_gap: float
     total_score: float
+    raw_score: Optional[float] = None
+    display_score: Optional[float] = None
+    label: Optional[str] = None
+    terms: Optional[Dict[str, Dict[str, float]]] = None
+    formula_trace: Optional[str] = None
+
+class StructuredRationale(BaseModel):
+    why_this_team: str
+    matched_skills: List[str] = Field(default_factory=list)
+    skills_to_learn: List[str] = Field(default_factory=list)
+    risks: List[str] = Field(default_factory=list)
+    why_not_runner_up: str = ""
+    fallback_rationale: bool = False
 
 class TeamCandidate(BaseModel):
     team: str
@@ -67,17 +91,40 @@ class TeamCandidate(BaseModel):
     reason: str
     risk: str
     learning_opportunities: List[str] = Field(default_factory=list)
+    raw_score: Optional[float] = None
+    display_score: Optional[float] = None
+    label: Optional[str] = None
+    terms: Optional[Dict[str, Dict[str, float]]] = None
+    matched_skills: List[Dict[str, str]] = Field(default_factory=list)
+    missing_skills: List[str] = Field(default_factory=list)
+    formula_trace: Optional[str] = None
+    structured_rationale: Optional[StructuredRationale] = None
 
 class Assignment(BaseModel):
     employee_id: str
     team: str
     project: str
-    score_breakdown: Dict[str, float] = Field(default_factory=dict)
+    score_breakdown: Dict[str, Any] = Field(default_factory=dict)
     reason: str
     approved_by: Optional[str] = None
     overridden: bool = False
     candidates: List[TeamCandidate] = Field(default_factory=list)
     status: WorkflowStepStatus = "waiting_approval"
+    # Edge case flags (Task 3)
+    insufficient_data: bool = False
+    weak_fit: bool = False
+    close_call: bool = False
+    all_teams_zero_capacity: bool = False
+    structured_rationale: Optional[StructuredRationale] = None
+    # Override details (Task 4)
+    recommended_team: Optional[str] = None
+    recommended_project: Optional[str] = None
+    recommended_score: Optional[float] = None
+    chosen_team: Optional[str] = None
+    chosen_project: Optional[str] = None
+    chosen_score: Optional[float] = None
+    override_reason: Optional[str] = None
+    approved_at: Optional[str] = None
 
 # 5. Guide & Citations
 class Citation(BaseModel):
@@ -135,7 +182,7 @@ class OverrideAssignmentRequest(BaseModel):
     manager_name: str = "Engineering Manager"
     team: str
     project: str
-    reason: str
+    reason: str = Field(..., min_length=10, description="Manager justification for team override (min 10 characters)")
 
 class StepStatusInfo(BaseModel):
     step: str
