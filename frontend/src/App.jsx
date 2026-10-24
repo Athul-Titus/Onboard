@@ -34,10 +34,11 @@ import {
   Plus,
   RotateCw,
   Building2,
-  Briefcase
+  Briefcase,
+  Activity
 } from 'lucide-react';
 
-const API_BASE = 'http://localhost:8000';
+const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
 
 export default function App() {
   const [hires, setHires] = useState([]);
@@ -48,7 +49,11 @@ export default function App() {
   const [showOverrideModal, setShowOverrideModal] = useState(false);
   const [citationModal, setCitationModal] = useState(null);
   const [skillEvidenceModal, setSkillEvidenceModal] = useState(null);
-  const [activeTab, setActiveTab] = useState('workflow'); // 'workflow' | 'skills' | 'guide' | 'audit'
+  const [activeTab, setActiveTab] = useState('workflow'); // 'workflow' | 'skills' | 'guide' | 'audit' | 'eval'
+  const [retryingStep, setRetryingStep] = useState(null);
+  const [evalData, setEvalData] = useState(null);
+  const [loadingEval, setLoadingEval] = useState(false);
+  const [loadingDetail, setLoadingDetail] = useState(false);
 
   // Email & Role Editing State
   const [isEditingEmail, setIsEditingEmail] = useState(false);
@@ -262,8 +267,9 @@ Contact: +1 (555) 987-1234, 88 Mission Boulevard, Seattle WA, elena.rostova@outl
   };
 
   // Fetch detail for selected hire
-  const fetchHireDetail = async (id) => {
+  const fetchHireDetail = async (id, isSilent = false) => {
     if (!id) return;
+    if (!isSilent && !hireDetail) setLoadingDetail(true);
     try {
       const res = await fetch(`${API_BASE}/hires/${id}`);
       if (res.ok) {
@@ -272,6 +278,8 @@ Contact: +1 (555) 987-1234, 88 Mission Boulevard, Seattle WA, elena.rostova@outl
       }
     } catch (err) {
       console.error('Error fetching hire detail:', err);
+    } finally {
+      if (!isSilent) setLoadingDetail(false);
     }
   };
 
@@ -283,9 +291,11 @@ Contact: +1 (555) 987-1234, 88 Mission Boulevard, Seattle WA, elena.rostova@outl
 
   useEffect(() => {
     if (selectedHireId) {
-      fetchHireDetail(selectedHireId);
-      const detailInterval = setInterval(() => fetchHireDetail(selectedHireId), 3000);
+      fetchHireDetail(selectedHireId, false);
+      const detailInterval = setInterval(() => fetchHireDetail(selectedHireId, true), 3000);
       return () => clearInterval(detailInterval);
+    } else {
+      setHireDetail(null);
     }
   }, [selectedHireId]);
 
@@ -386,6 +396,50 @@ Contact: +1 (555) 987-1234, 88 Mission Boulevard, Seattle WA, elena.rostova@outl
       alert('Approval error: ' + err.message);
     }
   };
+
+  // Retry a failed or needs_attention step
+  const handleRetryStep = async (step) => {
+    if (!selectedHireId) return;
+    try {
+      setRetryingStep(step);
+      const res = await fetch(`${API_BASE}/hires/${selectedHireId}/retry/${step}`, {
+        method: 'POST'
+      });
+      if (res.ok) {
+        await fetchHireDetail(selectedHireId);
+        await fetchHires();
+      } else {
+        const err = await res.json().catch(() => ({}));
+        alert(`Retry failed: ${err.detail || 'Could not retry step'}`);
+      }
+    } catch (err) {
+      alert(`Retry error: ${err.message}`);
+    } finally {
+      setRetryingStep(null);
+    }
+  };
+
+  // Fetch benchmark evaluation metrics
+  const fetchEvalData = async (force = false) => {
+    try {
+      setLoadingEval(true);
+      const res = await fetch(`${API_BASE}/eval/benchmark${force ? '?force_refresh=true' : ''}`);
+      if (res.ok) {
+        const data = await res.json();
+        setEvalData(data);
+      }
+    } catch (err) {
+      console.error('Failed to load eval benchmarks:', err);
+    } finally {
+      setLoadingEval(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === 'eval' && !evalData) {
+      fetchEvalData();
+    }
+  }, [activeTab]);
 
   // Clean duplicates and unwanted test runs
   const handleCleanDuplicates = async () => {
@@ -845,6 +899,17 @@ Contact: +1 (555) 987-1234, 88 Mission Boulevard, Seattle WA, elena.rostova@outl
           >
             <ShieldCheck className="w-4 h-4" />
             Audit Log
+          </button>
+          <button
+            onClick={() => setActiveTab('eval')}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition flex items-center gap-2 ${
+              activeTab === 'eval'
+                ? 'bg-indigo-600/10 text-indigo-400 border border-indigo-500/30 font-semibold'
+                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
+            }`}
+          >
+            <Activity className="w-4 h-4" />
+            Evaluation Benchmarks
           </button>
         </div>
 
