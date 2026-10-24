@@ -214,6 +214,19 @@ class WorkflowOrchestrator:
             reason="Provision corporate directory account and simulated SSO access"
         )
 
+        if edited_email and edited_email.strip().lower() != prop.proposed_email.strip().lower():
+            self.log_audit(
+                db,
+                employee_id=employee_id,
+                agent="Identity Agent",
+                action="manager_edit:identity_email",
+                entry_type="manager_action",
+                actor=manager_name,
+                input_summary=f"Proposed: '{prop.proposed_email}', Edited to: '{final_email}'",
+                output_summary=f"Corporate email manually edited to '{final_email}'",
+                reason=f"Manager {manager_name} modified corporate email during identity approval gate."
+            )
+
         prop.proposed_email = final_email
         prop.username = final_username
         prop.account_created = True
@@ -226,10 +239,12 @@ class WorkflowOrchestrator:
             db,
             employee_id=employee_id,
             agent="Identity Agent",
-            action="provision_account",
-            input_summary=f"Approved by {manager_name} with email '{final_email}'",
-            output_summary=f"Provisioned mock account: {account_result['user_id']}",
-            reason="Manager signed off on corporate identity; systems access provisioned."
+            action="manager_approval:identity",
+            entry_type="manager_action",
+            actor=manager_name,
+            input_summary=f"Approved email '{final_email}' for {emp.name}",
+            output_summary=f"Identity confirmed; mock account {account_result.get('user_id')} provisioned",
+            reason=f"Manager sign-off on corporate email and systems access (by {manager_name})."
         )
 
         return account_result
@@ -366,10 +381,12 @@ class WorkflowOrchestrator:
             db,
             employee_id=employee_id,
             agent="Project Manager",
-            action="approve_assignment",
-            input_summary=f"Approved by {manager_name}",
+            action="manager_approval:assignment",
+            entry_type="manager_action",
+            actor=manager_name,
+            input_summary=f"Approved placement in {assign.team} ({assign.project}) for {emp.name}",
             output_summary=f"Confirmed placement in {assign.team} ({assign.project})",
-            reason="Manager signed off on team placement."
+            reason=f"Manager sign-off on team and starter project placement (by {manager_name})."
         )
         return assign
 
@@ -393,7 +410,9 @@ class WorkflowOrchestrator:
             db,
             employee_id=employee_id,
             agent="Project Manager",
-            action="override_assignment",
+            action="manager_override:assignment",
+            entry_type="manager_action",
+            actor=manager_name,
             input_summary=f"Override from '{prev_team}' to '{team}' ({project}) by {manager_name}",
             output_summary=f"Assigned to {team}",
             reason=f"Manager justification: {reason}"
