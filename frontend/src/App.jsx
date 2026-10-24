@@ -18,16 +18,14 @@ import {
   X,
   Lock,
   Layers,
-  Sparkles,
   Info,
   Award,
   BarChart3,
   GitBranch,
   BookOpen,
-  HelpCircle,
-  Search,
   UploadCloud,
-  FileCheck
+  FileCheck,
+  FlaskConical
 } from 'lucide-react';
 
 const API_BASE = 'http://localhost:8000';
@@ -359,26 +357,26 @@ Contact: +1 (555) 987-1234, 88 Mission Boulevard, Seattle WA, elena.rostova@outl
   const getStatusBadge = (status) => {
     switch (status) {
       case 'done':
-        return <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-950 text-emerald-400 border border-emerald-800"><CheckCircle2 className="w-3 h-3" /> Done</span>;
+        return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold bg-emerald-950 text-emerald-400 border border-emerald-800"><CheckCircle2 className="w-3 h-3" /> Done</span>;
       case 'waiting_approval':
-        return <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-950 text-amber-400 border border-amber-800 animate-pulse"><Clock className="w-3 h-3" /> Awaiting Approval</span>;
+        return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold bg-amber-950 text-amber-400 border border-amber-800"><Clock className="w-3 h-3" /> Awaiting Approval</span>;
       case 'running':
-        return <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-950 text-blue-400 border border-blue-800 animate-spin"><RefreshCw className="w-3 h-3" /> Running</span>;
+        return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold bg-blue-950 text-blue-400 border border-blue-800"><RefreshCw className="w-3 h-3 animate-spin" /> Running</span>;
       case 'needs_attention':
-        return <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-rose-950 text-rose-400 border border-rose-800"><AlertCircle className="w-3 h-3" /> Attention</span>;
+        return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold bg-rose-950 text-rose-400 border border-rose-800"><AlertCircle className="w-3 h-3" /> Needs Attention</span>;
       default:
-        return <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-900 text-slate-400 border border-slate-800">Queued</span>;
+        return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold bg-slate-900 text-slate-400 border border-slate-800">Queued</span>;
     }
   };
 
   const getLevelBadge = (level) => {
     switch (level?.toLowerCase()) {
       case 'advanced':
-        return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-purple-950 text-purple-300 border border-purple-800">Advanced</span>;
+        return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-slate-800 text-slate-100 border border-slate-600">Advanced</span>;
       case 'intermediate':
-        return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium bg-indigo-950 text-indigo-300 border border-indigo-800">Intermediate</span>;
+        return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium bg-slate-800 text-slate-300 border border-slate-700">Intermediate</span>;
       default:
-        return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium bg-slate-800 text-slate-400 border border-slate-700">Beginner</span>;
+        return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium bg-slate-900 text-slate-400 border border-slate-700">Beginner</span>;
     }
   };
 
@@ -516,9 +514,9 @@ Contact: +1 (555) 987-1234, 88 Mission Boulevard, Seattle WA, elena.rostova@outl
 
         {/* Selected Candidate Overview Bar */}
         {hireDetail && (
-          <div className="bg-slate-900/40 border border-slate-800/80 rounded-2xl p-5 flex flex-wrap items-center justify-between gap-4 backdrop-blur">
+          <div className="bg-slate-900 border border-slate-800 rounded-lg p-5 flex flex-wrap items-center justify-between gap-4">
             <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center font-bold text-lg text-indigo-400">
+              <div className="w-12 h-12 rounded-lg bg-slate-800 border border-slate-700 flex items-center justify-center font-bold text-lg text-indigo-400">
                 {hireDetail.employee.name.slice(0, 2).toUpperCase()}
               </div>
               <div>
@@ -534,82 +532,54 @@ Contact: +1 (555) 987-1234, 88 Mission Boulevard, Seattle WA, elena.rostova@outl
                 </div>
               </div>
             </div>
-
-            <div className="flex items-center gap-2 text-xs bg-slate-950/60 px-3 py-2 rounded-xl border border-slate-800">
-              <div className="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></div>
-              <span className="text-slate-300">Live Orchestrator Active</span>
-            </div>
+            <span className="text-xs text-slate-500 font-mono">{hireDetail.employee.id?.slice(0, 8)}</span>
           </div>
         )}
 
         {/* Post-Submission PII Redaction Summary Banner */}
         {hireDetail?.redaction_summary && (
-          <div className="bg-slate-900/60 border border-indigo-500/30 rounded-2xl p-4 flex flex-wrap items-center justify-between gap-3 shadow-lg backdrop-blur">
+          <div className="bg-slate-900 border border-slate-800 rounded-lg p-4 flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-3">
-              <div className="p-2 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400">
+              <div className="p-2 rounded bg-slate-800 border border-slate-700 text-indigo-400">
                 <ShieldCheck className="w-5 h-5" />
               </div>
               <div>
                 <div className="flex items-center gap-2">
-                  <span className="font-bold text-white text-sm">Automated PII Redaction Summary</span>
-                  <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-[11px] font-semibold">
-                    {hireDetail.redaction_summary.total} {hireDetail.redaction_summary.total === 1 ? 'item' : 'items'} sanitized
+                  <span className="font-bold text-white text-sm">PII Redaction Applied</span>
+                  <span className="px-2 py-0.5 rounded bg-emerald-950 border border-emerald-800 text-emerald-400 text-[11px] font-semibold">
+                    {hireDetail.redaction_summary.total} {hireDetail.redaction_summary.total === 1 ? 'item' : 'items'} removed
                   </span>
                 </div>
                 <p className="text-xs text-slate-400 mt-0.5">
                   {hireDetail.redaction_summary.total > 0
-                    ? `Sanitized before AI processing: ${hireDetail.redaction_summary.types_removed.map((t) => t.toUpperCase()).join(', ')}`
-                    : 'No candidate PII detected in resume text (clean for processing)'}
+                    ? `Removed before AI processing: ${hireDetail.redaction_summary.types_removed.map((t) => t.toUpperCase()).join(', ')}`
+                    : 'No PII detected in resume text'}
                 </p>
               </div>
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
-              <span
-                className={`px-2.5 py-1 rounded-lg text-xs font-mono border ${
-                  hireDetail.redaction_summary.phone > 0
-                    ? 'bg-indigo-500/15 border-indigo-500/40 text-indigo-300 font-semibold'
-                    : 'bg-slate-950/70 border-slate-800 text-slate-500'
-                }`}
-              >
-                Phone: {hireDetail.redaction_summary.phone}
-              </span>
-              <span
-                className={`px-2.5 py-1 rounded-lg text-xs font-mono border ${
-                  hireDetail.redaction_summary.address > 0
-                    ? 'bg-indigo-500/15 border-indigo-500/40 text-indigo-300 font-semibold'
-                    : 'bg-slate-950/70 border-slate-800 text-slate-500'
-                }`}
-              >
-                Address: {hireDetail.redaction_summary.address}
-              </span>
-              <span
-                className={`px-2.5 py-1 rounded-lg text-xs font-mono border ${
-                  hireDetail.redaction_summary.email > 0
-                    ? 'bg-indigo-500/15 border-indigo-500/40 text-indigo-300 font-semibold'
-                    : 'bg-slate-950/70 border-slate-800 text-slate-500'
-                }`}
-              >
-                Email: {hireDetail.redaction_summary.email}
-              </span>
-              <span
-                className={`px-2.5 py-1 rounded-lg text-xs font-mono border ${
-                  hireDetail.redaction_summary.dob > 0
-                    ? 'bg-indigo-500/15 border-indigo-500/40 text-indigo-300 font-semibold'
-                    : 'bg-slate-950/70 border-slate-800 text-slate-500'
-                }`}
-              >
-                DOB: {hireDetail.redaction_summary.dob}
-              </span>
+              {['phone', 'address', 'email', 'dob'].map((field) => (
+                <span
+                  key={field}
+                  className={`px-2 py-0.5 rounded text-xs font-mono border ${
+                    hireDetail.redaction_summary[field] > 0
+                      ? 'bg-slate-800 border-slate-600 text-slate-200'
+                      : 'bg-slate-950 border-slate-800 text-slate-600'
+                  }`}
+                >
+                  {field.charAt(0).toUpperCase() + field.slice(1)}: {hireDetail.redaction_summary[field]}
+                </span>
+              ))}
             </div>
           </div>
         )}
 
         {/* TAB 1: WORKFLOW VIEW */}
         {activeTab === 'workflow' && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             {/* CARD 1: IDENTITY AGENT */}
-            <div className="bg-slate-900/50 border border-slate-800 rounded-2xl p-5 flex flex-col justify-between">
+            <div className="bg-slate-900 border border-slate-800 rounded-lg p-5 flex flex-col justify-between">
               <div>
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-2.5">
@@ -684,7 +654,7 @@ Contact: +1 (555) 987-1234, 88 Mission Boulevard, Seattle WA, elena.rostova@outl
             </div>
 
             {/* CARD 2: SKILL MANAGER OVERVIEW */}
-            <div className="bg-slate-900/50 border border-slate-800 rounded-2xl p-5 flex flex-col justify-between">
+            <div className="bg-slate-900 border border-slate-800 rounded-lg p-5 flex flex-col justify-between">
               <div>
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-2.5">
@@ -766,11 +736,11 @@ Contact: +1 (555) 987-1234, 88 Mission Boulevard, Seattle WA, elena.rostova@outl
             </div>
 
             {/* CARD 3: PROJECT MANAGER & ASSIGNMENT */}
-            <div className="bg-slate-900/50 border border-slate-800 rounded-2xl p-5 md:col-span-2 flex flex-col justify-between">
+            <div className="bg-slate-900 border border-slate-800 rounded-lg p-5 md:col-span-2 flex flex-col justify-between">
               <div>
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-2.5">
-                    <div className="p-2 rounded-lg bg-purple-950 text-purple-400 border border-purple-800/50">
+                    <div className="p-2 rounded bg-slate-800 text-slate-300 border border-slate-700">
                       <GitPullRequest className="w-5 h-5" />
                     </div>
                     <div>
@@ -781,8 +751,8 @@ Contact: +1 (555) 987-1234, 88 Mission Boulevard, Seattle WA, elena.rostova@outl
                   <div className="flex items-center gap-2">
                     {hireDetail?.assignment && getStatusBadge(hireDetail.assignment.status)}
                     {hireDetail?.assignment?.overridden && (
-                      <span className="px-2 py-0.5 text-xs font-bold bg-purple-950 text-purple-300 border border-purple-800 rounded-md">
-                        OVERRIDDEN BY MANAGER
+                      <span className="px-2 py-0.5 text-xs font-bold bg-amber-950 text-amber-300 border border-amber-800 rounded">
+                        Manager Override
                       </span>
                     )}
                   </div>
@@ -840,10 +810,8 @@ Contact: +1 (555) 987-1234, 88 Mission Boulevard, Seattle WA, elena.rostova@outl
                     </div>
 
                     {/* LLM Strategic Rationale */}
-                    <div className="bg-slate-950/60 p-4 rounded-xl border border-slate-800">
-                      <div className="flex items-center gap-1.5 text-xs font-semibold text-indigo-300 mb-1">
-                        <Sparkles className="w-3.5 h-3.5" /> LLM Strategic Placement Rationale
-                      </div>
+                    <div className="bg-slate-950 p-4 rounded border border-slate-800">
+                      <div className="text-xs font-semibold text-slate-400 mb-1 uppercase tracking-wide">AI Placement Rationale</div>
                       <p className="text-xs text-slate-300 leading-relaxed">{hireDetail.assignment.reason}</p>
                     </div>
                   </div>
@@ -880,30 +848,30 @@ Contact: +1 (555) 987-1234, 88 Mission Boulevard, Seattle WA, elena.rostova@outl
 
         {/* TAB 2: DETAILED SKILL MAP & GAP ANALYSIS */}
         {activeTab === 'skills' && hireDetail?.skill_map && (
-          <div className="space-y-6">
+          <div className="space-y-5">
             {/* Header with Verification State */}
-            <div className="bg-slate-900/40 border border-slate-800 rounded-2xl p-5 flex flex-wrap items-center justify-between gap-4">
+            <div className="bg-slate-900 border border-slate-800 rounded-lg p-5 flex flex-wrap items-center justify-between gap-4">
               <div>
                 <h3 className="font-bold text-white text-base flex items-center gap-2">
                   <Award className="w-5 h-5 text-indigo-400" />
                   Evidence-Backed Technical Skill Map
                 </h3>
                 <p className="text-xs text-slate-400 mt-0.5">
-                  Every skill is mapped to canonical ontology, categorized, and backed by specific resume quotes and GitHub evidence.
+                  Each skill is mapped to a canonical ontology and backed by specific resume quotes or GitHub data.
                 </p>
               </div>
 
               <div className="flex items-center gap-3">
-                <span className={`px-3 py-1 rounded-full text-xs font-semibold border flex items-center gap-1.5 ${
+                <span className={`px-2 py-0.5 rounded text-xs font-semibold border flex items-center gap-1.5 ${
                   hireDetail.skill_map.verification_state === 'verified'
                     ? 'bg-emerald-950 text-emerald-300 border-emerald-800'
                     : 'bg-amber-950 text-amber-300 border-amber-800'
                 }`}>
                   <GitBranch className="w-3.5 h-3.5" />
-                  {hireDetail.skill_map.verification_state === 'verified' ? 'GitHub Verified' : 'Resume-Only Mode'}
+                  {hireDetail.skill_map.verification_state === 'verified' ? 'GitHub Verified' : 'Resume-Only'}
                 </span>
                 <span className="text-xs text-slate-400 font-mono">
-                  {hireDetail.skill_map.skills.length} Competencies
+                  {hireDetail.skill_map.skills.length} skills
                 </span>
               </div>
             </div>
@@ -945,15 +913,15 @@ Contact: +1 (555) 987-1234, 88 Mission Boulevard, Seattle WA, elena.rostova@outl
             {/* Grouped Skills by Category */}
             <div className="space-y-4">
               <h4 className="text-sm font-bold text-slate-300 flex items-center gap-2">
-                <Layers className="w-4 h-4 text-indigo-400" />
-                Grouped Competency Map (Click any skill for line-by-line evidence)
+                <Layers className="w-4 h-4 text-slate-400" />
+                Skills by Category — click any skill for evidence
               </h4>
 
               {Object.entries(groupSkillsByCategory(hireDetail.skill_map.skills)).map(([category, skills]) => (
-                <div key={category} className="bg-slate-900/40 border border-slate-800/80 rounded-2xl p-4 space-y-3">
-                  <div className="flex items-center justify-between pb-1.5 border-b border-slate-800/60">
+                <div key={category} className="bg-slate-900 border border-slate-800 rounded-lg p-4 space-y-3">
+                  <div className="flex items-center justify-between pb-1.5 border-b border-slate-800">
                     <span className="font-bold text-xs uppercase tracking-wider text-slate-300 capitalize flex items-center gap-2">
-                      <span className="w-2 h-2 rounded-full bg-indigo-500"></span>
+                      <span className="w-1.5 h-1.5 rounded-sm bg-indigo-500"></span>
                       {category}
                     </span>
                     <span className="text-xs text-slate-400 font-mono">{skills.length} skills</span>
@@ -964,7 +932,7 @@ Contact: +1 (555) 987-1234, 88 Mission Boulevard, Seattle WA, elena.rostova@outl
                       <div
                         key={idx}
                         onClick={() => setSkillEvidenceModal(s)}
-                        className="bg-slate-950/80 hover:bg-slate-950 border border-slate-800 hover:border-indigo-500/50 p-3 rounded-xl cursor-pointer transition shadow-sm space-y-2"
+                        className="bg-slate-950 hover:bg-slate-900 border border-slate-800 hover:border-slate-600 p-3 rounded cursor-pointer transition space-y-2"
                       >
                         <div className="flex items-center justify-between">
                           <span className="font-bold text-sm text-white">{s.skill}</span>
@@ -999,12 +967,12 @@ Contact: +1 (555) 987-1234, 88 Mission Boulevard, Seattle WA, elena.rostova@outl
             </div>
 
             {/* Per-Team Gap Analysis Panel */}
-            <div className="bg-slate-900/50 border border-slate-800 rounded-2xl p-5 space-y-4">
+            <div className="bg-slate-900 border border-slate-800 rounded-lg p-5 space-y-4">
               <div className="flex items-center justify-between pb-2 border-b border-slate-800">
                 <div>
                   <h4 className="text-sm font-bold text-white flex items-center gap-2">
-                    <GitBranch className="w-4 h-4 text-purple-400" />
-                    Per-Team Competency Gap Analysis
+                    <GitBranch className="w-4 h-4 text-slate-400" />
+                    Per-Team Gap Analysis
                   </h4>
                   <p className="text-xs text-slate-400">Deterministic coverage percentage and skill gap breakdown across engineering teams.</p>
                 </div>
@@ -1016,7 +984,7 @@ Contact: +1 (555) 987-1234, 88 Mission Boulevard, Seattle WA, elena.rostova@outl
                   const matched = gapData.matched_skills || [];
                   const missing = gapData.missing_skills || [];
                   return (
-                    <div key={teamName} className="bg-slate-950/70 p-4 rounded-xl border border-slate-800 space-y-3">
+                    <div key={teamName} className="bg-slate-950 p-4 rounded border border-slate-800 space-y-3">
                       <div className="flex flex-wrap items-center justify-between gap-2">
                         <div className="flex items-center gap-3">
                           <h5 className="font-bold text-sm text-white">{teamName}</h5>
@@ -1034,9 +1002,9 @@ Contact: +1 (555) 987-1234, 88 Mission Boulevard, Seattle WA, elena.rostova@outl
                       </div>
 
                       {/* Coverage Progress Bar */}
-                      <div className="w-full bg-slate-900 h-2 rounded-full overflow-hidden">
+                      <div className="w-full bg-slate-900 h-1.5 rounded overflow-hidden">
                         <div
-                          className={`h-2 rounded-full ${
+                          className={`h-1.5 ${
                             coverage >= 70 ? 'bg-emerald-500' : coverage >= 40 ? 'bg-indigo-500' : 'bg-amber-500'
                           }`}
                           style={{ width: `${coverage}%` }}
@@ -1084,27 +1052,27 @@ Contact: +1 (555) 987-1234, 88 Mission Boulevard, Seattle WA, elena.rostova@outl
 
         {/* TAB 3: PERSONALIZED 30-DAY GUIDE (RAG) */}
         {activeTab === 'guide' && (
-          <div className="space-y-6">
-            <div className="bg-slate-900/40 border border-slate-800 rounded-2xl p-5 flex items-center justify-between">
+          <div className="space-y-5">
+            <div className="bg-slate-900 border border-slate-800 rounded-lg p-5 flex items-center justify-between">
               <div>
                 <h3 className="font-bold text-white text-base">Grounded 30-Day Engineering Guide</h3>
                 <p className="text-xs text-slate-400 mt-0.5">
-                  Every step is cited directly from internal engineering documentation. Missing policies are explicitly flagged.
+                  Every step cites internal engineering documentation. Missing policies are explicitly flagged.
                 </p>
               </div>
               <div className="flex items-center gap-2">
-                <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-950 text-emerald-400 border border-emerald-800 flex items-center gap-1">
-                  <CheckCircle2 className="w-3.5 h-3.5" /> Verifier Pass: 100% Checked
+                <span className="px-2 py-0.5 rounded text-xs font-semibold bg-emerald-950 text-emerald-400 border border-emerald-800 flex items-center gap-1">
+                  <CheckCircle2 className="w-3.5 h-3.5" /> Citation-verified
                 </span>
               </div>
             </div>
 
             {hireDetail?.guide ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 {hireDetail.guide.sections.map((sec, idx) => (
-                  <div key={idx} className="bg-slate-900/50 border border-slate-800 rounded-2xl p-5">
+                  <div key={idx} className="bg-slate-900 border border-slate-800 rounded-lg p-5">
                     <h4 className="font-bold text-white text-sm pb-2 border-b border-slate-800 mb-3 flex items-center gap-2">
-                      <span className="w-2 h-2 rounded-full bg-indigo-500"></span>
+                      <span className="w-1.5 h-1.5 bg-indigo-500"></span>
                       {sec.title}
                     </h4>
 
@@ -1149,7 +1117,7 @@ Contact: +1 (555) 987-1234, 88 Mission Boulevard, Seattle WA, elena.rostova@outl
 
         {/* TAB 4: AUDIT TRAIL */}
         {activeTab === 'audit' && (
-          <div className="bg-slate-900/50 border border-slate-800 rounded-2xl p-5 space-y-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-lg p-5 space-y-4">
             <div className="flex items-center justify-between pb-3 border-b border-slate-800">
               <div>
                 <h3 className="font-bold text-white text-base">Immutable Audit Log</h3>
@@ -1162,7 +1130,7 @@ Contact: +1 (555) 987-1234, 88 Mission Boulevard, Seattle WA, elena.rostova@outl
 
             <div className="space-y-3 max-h-[600px] overflow-y-auto pr-1">
               {hireDetail?.audit_logs?.map((log, idx) => (
-                <div key={idx} className="bg-slate-950/70 border border-slate-800/80 p-3.5 rounded-xl space-y-1.5 text-xs">
+                <div key={idx} className="bg-slate-950 border border-slate-800 p-3.5 rounded space-y-1.5 text-xs">
                   <div className="flex items-center justify-between text-slate-400">
                     <span className="font-semibold text-indigo-400">{log.agent} › {log.action}</span>
                     <span className="font-mono text-[11px] text-slate-500">{log.timestamp}</span>
@@ -1179,17 +1147,153 @@ Contact: +1 (555) 987-1234, 88 Mission Boulevard, Seattle WA, elena.rostova@outl
                 </div>
               ))}
             </div>
+            </div>
+          </div>
+        )}
+
+        {/* PRIVACY POLICY */}
+        {activeTab === 'privacy' && (
+          <div className="bg-slate-900 border border-slate-800 rounded-lg p-8 space-y-6 max-w-3xl mx-auto">
+            <div className="flex items-center gap-3 pb-4 border-b border-slate-800">
+              <button
+                onClick={() => setActiveTab('workflow')}
+                className="text-xs text-slate-400 hover:text-slate-200 flex items-center gap-1 transition"
+              >
+                <ChevronRight className="w-3.5 h-3.5 rotate-180" /> Back
+              </button>
+              <h2 className="text-lg font-bold text-white">Privacy Policy</h2>
+            </div>
+            <p className="text-xs text-slate-500">Last updated: October 2026</p>
+
+            <div className="space-y-5 text-sm text-slate-300 leading-relaxed">
+              <section>
+                <h3 className="font-semibold text-white mb-2">1. Scope</h3>
+                <p>OnboardOS is an internal engineering onboarding orchestrator. This policy describes how data entered into the system is handled during the onboarding workflow.</p>
+              </section>
+
+              <section>
+                <h3 className="font-semibold text-white mb-2">2. Data Collected</h3>
+                <p>The system processes the following data submitted by authorised HR or engineering personnel:</p>
+                <ul className="list-disc list-inside mt-2 space-y-1 text-slate-400">
+                  <li>Candidate full name and intended role</li>
+                  <li>Resume or CV text (PDF, DOCX, or plain text)</li>
+                  <li>GitHub username (optional, for public repository verification)</li>
+                  <li>Intended start date</li>
+                </ul>
+              </section>
+
+              <section>
+                <h3 className="font-semibold text-white mb-2">3. Automatic PII Redaction</h3>
+                <p>Before any resume text is passed to AI models or stored in the database, the system automatically detects and removes the following classes of personal identifiers:</p>
+                <ul className="list-disc list-inside mt-2 space-y-1 text-slate-400">
+                  <li>Phone numbers</li>
+                  <li>Physical addresses</li>
+                  <li>Personal email addresses</li>
+                  <li>Dates of birth</li>
+                </ul>
+                <p className="mt-2">A redaction count is displayed in the UI after submission. The original unredacted text is not stored.</p>
+              </section>
+
+              <section>
+                <h3 className="font-semibold text-white mb-2">4. Data Storage</h3>
+                <p>Processed data is stored in a local SQLite database. GitHub verification uses the public GitHub API only. No data is sent to third-party services except OpenAI (for the AI explanation and guide generation steps). Data sent to OpenAI has already been PII-redacted.</p>
+              </section>
+
+              <section>
+                <h3 className="font-semibold text-white mb-2">5. Audit Trail</h3>
+                <p>All agent actions, manager approvals, and overrides are written to an immutable audit log with timestamps. This log is retained for compliance review.</p>
+              </section>
+
+              <section>
+                <h3 className="font-semibold text-white mb-2">6. Data Retention</h3>
+                <p>Onboarding records are retained for the duration of the employment relationship and for 7 years thereafter, in compliance with applicable employment record-keeping regulations. Records may be deleted earlier upon written request to the engineering systems administrator.</p>
+              </section>
+
+              <section>
+                <h3 className="font-semibold text-white mb-2">7. Contact</h3>
+                <p>For privacy-related queries, contact your engineering systems administrator or data protection officer.</p>
+              </section>
+            </div>
+          </div>
+        )}
+
+        {/* TERMS OF USE */}
+        {activeTab === 'terms' && (
+          <div className="bg-slate-900 border border-slate-800 rounded-lg p-8 space-y-6 max-w-3xl mx-auto">
+            <div className="flex items-center gap-3 pb-4 border-b border-slate-800">
+              <button
+                onClick={() => setActiveTab('workflow')}
+                className="text-xs text-slate-400 hover:text-slate-200 flex items-center gap-1 transition"
+              >
+                <ChevronRight className="w-3.5 h-3.5 rotate-180" /> Back
+              </button>
+              <h2 className="text-lg font-bold text-white">Terms of Use</h2>
+            </div>
+            <p className="text-xs text-slate-500">Last updated: October 2026</p>
+
+            <div className="space-y-5 text-sm text-slate-300 leading-relaxed">
+              <section>
+                <h3 className="font-semibold text-white mb-2">1. Authorised Use</h3>
+                <p>OnboardOS is an internal tool for use by authorised engineering and HR personnel only. Access is restricted to employees with appropriate system permissions. Unauthorised access or use is prohibited.</p>
+              </section>
+
+              <section>
+                <h3 className="font-semibold text-white mb-2">2. AI-Assisted Decisions</h3>
+                <p>Team assignment recommendations generated by the AI pipeline are advisory only. All placement decisions require explicit manager approval before taking effect. The system records both AI recommendations and manager decisions in the audit log.</p>
+              </section>
+
+              <section>
+                <h3 className="font-semibold text-white mb-2">3. Data Accuracy</h3>
+                <p>Personnel submitting candidate data are responsible for ensuring that information entered is accurate and complete. Knowingly submitting false information is a disciplinary matter.</p>
+              </section>
+
+              <section>
+                <h3 className="font-semibold text-white mb-2">4. AI Limitations</h3>
+                <p>Skill extraction, team scoring, and onboarding guide generation are performed using automated methods and may contain errors. Managers should review all outputs before acting on them. The system is a prototype and should not be the sole basis for employment decisions.</p>
+              </section>
+
+              <section>
+                <h3 className="font-semibold text-white mb-2">5. Audit and Accountability</h3>
+                <p>All actions taken within the system are logged with timestamps and actor identities. These logs may be reviewed by system administrators and management for compliance and quality assurance purposes.</p>
+              </section>
+
+              <section>
+                <h3 className="font-semibold text-white mb-2">6. Changes to These Terms</h3>
+                <p>These terms may be updated by the engineering systems administrator. Continued use of the system after notification of changes constitutes acceptance of the updated terms.</p>
+              </section>
+            </div>
           </div>
         )}
       </main>
 
+      {/* Footer */}
+      <footer className="border-t border-slate-800 bg-slate-900 px-6 py-4 mt-auto">
+        <div className="max-w-7xl mx-auto flex items-center justify-between text-xs text-slate-500">
+          <span>OnboardOS &mdash; Engineering Onboarding Orchestrator</span>
+          <div className="flex items-center gap-4">
+            <button
+              onClick={() => setActiveTab('privacy')}
+              className="hover:text-slate-300 transition"
+            >
+              Privacy Policy
+            </button>
+            <button
+              onClick={() => setActiveTab('terms')}
+              className="hover:text-slate-300 transition"
+            >
+              Terms of Use
+            </button>
+          </div>
+        </div>
+      </footer>
+
       {/* MODAL: READABLE SKILL EVIDENCE & SIGNALS */}
       {skillEvidenceModal && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-lg w-full p-6 space-y-4 shadow-2xl max-h-[85vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-700 rounded-lg max-w-lg w-full p-6 space-y-4 shadow-2xl max-h-[85vh] overflow-y-auto">
             <div className="flex items-center justify-between pb-3 border-b border-slate-800">
               <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-lg bg-indigo-950 flex items-center justify-center border border-indigo-800">
+                <div className="w-8 h-8 rounded bg-slate-800 flex items-center justify-center border border-slate-700">
                   <Award className="w-4 h-4 text-indigo-400" />
                 </div>
                 <div>
@@ -1277,8 +1381,8 @@ Contact: +1 (555) 987-1234, 88 Mission Boulevard, Seattle WA, elena.rostova@outl
 
       {/* MODAL: NEW HIRE INTAKE */}
       {showIntakeModal && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-lg w-full p-6 space-y-4 shadow-2xl">
+        <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-700 rounded-lg max-w-lg w-full p-6 space-y-4 shadow-2xl overflow-y-auto max-h-[95vh]">
             <div className="flex items-center justify-between pb-2 border-b border-slate-800">
               <h3 className="text-lg font-bold text-white flex items-center gap-2">
                 <PlusCircle className="w-5 h-5 text-indigo-400" />
@@ -1288,15 +1392,15 @@ Contact: +1 (555) 987-1234, 88 Mission Boulevard, Seattle WA, elena.rostova@outl
                 <button
                   type="button"
                   onClick={() => setDemoMode(!demoMode)}
-                  className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold border transition ${
+                  className={`flex items-center gap-1 px-2.5 py-1 rounded text-[11px] font-semibold border transition ${
                     demoMode
-                      ? 'bg-amber-500/15 text-amber-300 border-amber-500/40 shadow-sm shadow-amber-500/10'
-                      : 'bg-slate-800/80 text-slate-400 border-slate-700 hover:text-slate-300'
+                      ? 'bg-amber-950 text-amber-300 border-amber-800'
+                      : 'bg-slate-800 text-slate-400 border-slate-700 hover:text-slate-300'
                   }`}
                   title="Toggle developer hints & directory collision shortcuts"
                 >
-                  <Sparkles className="w-3 h-3 text-amber-400" />
-                  <span>Demo Mode: {demoMode ? 'ON' : 'OFF'}</span>
+                  <FlaskConical className="w-3 h-3" />
+                  <span>Dev mode: {demoMode ? 'on' : 'off'}</span>
                 </button>
                 <button onClick={() => setShowIntakeModal(false)} className="text-slate-400 hover:text-white transition">
                   <X className="w-5 h-5" />
@@ -1334,27 +1438,22 @@ Contact: +1 (555) 987-1234, 88 Mission Boulevard, Seattle WA, elena.rostova@outl
             )}
 
             {/* Quick Load Prepared Sample Hire */}
-            <div className="flex flex-wrap items-center justify-between gap-2 p-2.5 rounded-xl bg-slate-950/70 border border-slate-800">
-              <span className="text-[11px] font-semibold text-slate-400 flex items-center gap-1.5">
-                <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
-                Load sample hire:
-              </span>
+            <div className="flex flex-wrap items-center justify-between gap-2 p-2.5 rounded bg-slate-950 border border-slate-800">
+              <span className="text-[11px] font-semibold text-slate-400">Load sample candidate:</span>
               <div className="flex items-center gap-2">
                 <button
                   type="button"
                   onClick={() => loadSampleHire('with_github')}
-                  className="px-2.5 py-1 rounded-lg bg-indigo-500/15 hover:bg-indigo-500/25 border border-indigo-500/30 text-indigo-300 text-[11px] font-medium transition hover:border-indigo-400 flex items-center gap-1.5"
+                  className="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 text-[11px] font-medium transition"
                 >
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
-                  <span>Sample 1 (With GitHub)</span>
+                  Sample 1 — with GitHub
                 </button>
                 <button
                   type="button"
                   onClick={() => loadSampleHire('without_github')}
-                  className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 text-[11px] font-medium transition hover:text-white flex items-center gap-1.5"
+                  className="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 text-[11px] font-medium transition"
                 >
-                  <span className="w-1.5 h-1.5 rounded-full bg-amber-400"></span>
-                  <span>Sample 2 (Resume-Only)</span>
+                  Sample 2 — resume only
                 </button>
               </div>
             </div>
@@ -1485,9 +1584,9 @@ Contact: +1 (555) 987-1234, 88 Mission Boulevard, Seattle WA, elena.rostova@outl
                     Resume Document <span className="text-slate-400 font-normal text-[11px]">(PDF, DOCX, or TXT)</span>
                   </label>
                   {resumeFileName && !resumeUploadError && (
-                    <span className="flex items-center gap-1.5 text-[11px] text-emerald-400 font-medium bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
+                    <span className="flex items-center gap-1.5 text-[11px] text-emerald-400 font-medium bg-emerald-950 px-2 py-0.5 rounded border border-emerald-800">
                       <FileCheck className="w-3.5 h-3.5" />
-                      {resumeFileName} (extracted)
+                      {resumeFileName}
                     </span>
                   )}
                 </div>
@@ -1512,7 +1611,7 @@ Contact: +1 (555) 987-1234, 88 Mission Boulevard, Seattle WA, elena.rostova@outl
                       </div>
                     ) : (
                       <>
-                        <div className="w-8 h-8 rounded-full bg-indigo-500/10 flex items-center justify-center text-indigo-400 group-hover:scale-110 transition">
+                        <div className="w-8 h-8 rounded bg-slate-800 flex items-center justify-center text-slate-400">
                           <UploadCloud className="w-4 h-4" />
                         </div>
                         <div className="text-xs text-slate-300">
@@ -1582,14 +1681,14 @@ Contact: +1 (555) 987-1234, 88 Mission Boulevard, Seattle WA, elena.rostova@outl
                   type="button"
                   onClick={() => setShowIntakeModal(false)}
                   disabled={loading || isValidatingGithub}
-                  className="px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition disabled:opacity-50"
+                  className="px-4 py-2 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 transition disabled:opacity-50"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={loading || isValidatingGithub || uploadingResume}
-                  className="px-5 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-semibold shadow-md transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                  className="px-5 py-2 rounded bg-indigo-600 hover:bg-indigo-500 text-white font-semibold transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                 >
                   {loading ? (
                     <>
@@ -1613,8 +1712,8 @@ Contact: +1 (555) 987-1234, 88 Mission Boulevard, Seattle WA, elena.rostova@outl
 
       {/* MODAL: CITATION SOURCE VIEW */}
       {citationModal && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-lg w-full p-6 space-y-4 shadow-2xl">
+        <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-700 rounded-lg max-w-lg w-full p-6 space-y-4 shadow-2xl">
             <div className="flex items-center justify-between pb-2 border-b border-slate-800">
               <h3 className="text-base font-bold text-white flex items-center gap-2">
                 <FileText className="w-5 h-5 text-indigo-400" />
@@ -1649,8 +1748,8 @@ Contact: +1 (555) 987-1234, 88 Mission Boulevard, Seattle WA, elena.rostova@outl
 
       {/* MODAL: OVERRIDE ASSIGNMENT */}
       {showOverrideModal && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl">
+        <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-700 rounded-lg max-w-md w-full p-6 space-y-4 shadow-2xl">
             <div className="flex items-center justify-between pb-2 border-b border-slate-800">
               <h3 className="text-base font-bold text-white">Override Placement Decision</h3>
               <button onClick={() => setShowOverrideModal(false)} className="text-slate-400 hover:text-white">
@@ -1701,7 +1800,7 @@ Contact: +1 (555) 987-1234, 88 Mission Boulevard, Seattle WA, elena.rostova@outl
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-500 text-white font-semibold"
+                  className="px-4 py-1.5 rounded bg-indigo-600 hover:bg-indigo-500 text-white font-semibold"
                 >
                   Confirm Override
                 </button>
