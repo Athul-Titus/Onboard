@@ -25,7 +25,9 @@ import {
   GitBranch,
   BookOpen,
   HelpCircle,
-  Search
+  Search,
+  UploadCloud,
+  FileCheck
 } from 'lucide-react';
 
 const API_BASE = 'http://localhost:8000';
@@ -54,6 +56,45 @@ Projects: Built real-time transaction processing API handling 15k req/sec with R
 Certifications: AWS Solutions Architect Associate.
 Contact: +1-555-0199, 123 Tech Lane, San Francisco CA, john.personal@gmail.com, DOB: 1994-05-12.`
   });
+
+  // Resume upload state
+  const [resumeFileName, setResumeFileName] = useState('');
+  const [uploadingResume, setUploadingResume] = useState(false);
+  const [resumeUploadError, setResumeUploadError] = useState(null);
+
+  const handleResumeFileUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setResumeUploadError(null);
+    setUploadingResume(true);
+    setResumeFileName(file.name);
+
+    const uploadData = new FormData();
+    uploadData.append('file', file);
+
+    try {
+      const res = await fetch(`${API_BASE}/parse-resume`, {
+        method: 'POST',
+        body: uploadData,
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.detail || 'Failed to extract text from resume.');
+      }
+
+      setFormData((prev) => ({
+        ...prev,
+        resumeText: data.text,
+      }));
+    } catch (err) {
+      setResumeUploadError(err.message);
+    } finally {
+      setUploadingResume(false);
+      e.target.value = '';
+    }
+  };
 
   // Override form state
   const [overrideData, setOverrideData] = useState({
@@ -1091,14 +1132,81 @@ Contact: +1-555-0199, 123 Tech Lane, San Francisco CA, john.personal@gmail.com, 
                 </div>
               </div>
 
-              <div>
-                <label className="block text-slate-300 font-semibold mb-1">Resume Text (PII will be automatically redacted)</label>
-                <textarea
-                  rows={5}
-                  value={formData.resumeText}
-                  onChange={(e) => setFormData({ ...formData, resumeText: e.target.value })}
-                  className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-white font-mono text-[11px] focus:ring-2 focus:ring-indigo-500"
-                />
+              {/* Resume File Upload & Fallback */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="block text-slate-300 font-semibold">
+                    Resume Document <span className="text-slate-400 font-normal text-[11px]">(PDF, DOCX, or TXT)</span>
+                  </label>
+                  {resumeFileName && !resumeUploadError && (
+                    <span className="flex items-center gap-1.5 text-[11px] text-emerald-400 font-medium bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
+                      <FileCheck className="w-3.5 h-3.5" />
+                      {resumeFileName} (extracted)
+                    </span>
+                  )}
+                </div>
+
+                <div className="border border-dashed border-slate-700 hover:border-indigo-500/60 rounded-xl p-3 bg-slate-950/60 transition group text-center">
+                  <input
+                    type="file"
+                    id="resume-file-input"
+                    accept=".pdf,.docx,.txt,.md,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain"
+                    onChange={handleResumeFileUpload}
+                    className="hidden"
+                    disabled={uploadingResume}
+                  />
+                  <label
+                    htmlFor="resume-file-input"
+                    className="cursor-pointer flex flex-col items-center justify-center gap-1.5 py-1"
+                  >
+                    {uploadingResume ? (
+                      <div className="flex items-center gap-2 text-indigo-400 text-xs py-1">
+                        <RefreshCw className="w-4 h-4 animate-spin" />
+                        <span>Parsing document on backend (pypdf/docx)...</span>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="w-8 h-8 rounded-full bg-indigo-500/10 flex items-center justify-center text-indigo-400 group-hover:scale-110 transition">
+                          <UploadCloud className="w-4 h-4" />
+                        </div>
+                        <div className="text-xs text-slate-300">
+                          <span className="text-indigo-400 font-semibold underline underline-offset-2">Click to upload</span> or drag and drop
+                        </div>
+                        <p className="text-[10px] text-slate-500">Supports PDF, Word (.docx), or plain text (.txt)</p>
+                      </>
+                    )}
+                  </label>
+                </div>
+
+                {/* Error Banner for Empty/Corrupt files */}
+                {resumeUploadError && (
+                  <div className="p-2.5 rounded-lg bg-rose-500/10 border border-rose-500/30 flex items-start gap-2 text-rose-400 text-xs animate-shake">
+                    <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-rose-400" />
+                    <div>
+                      <strong className="font-semibold">Upload Error: </strong>
+                      <span>{resumeUploadError}</span>
+                      <p className="text-[11px] text-rose-300/80 mt-0.5">Please re-upload a valid file or paste your resume text in the fallback area below.</p>
+                    </div>
+                  </div>
+                )}
+
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-[11px] text-slate-400 font-medium">
+                      Resume Text (Editable Fallback Preview)
+                    </label>
+                    <span className="text-[10px] text-slate-500">
+                      {formData.resumeText ? `${formData.resumeText.length} characters` : 'Empty'}
+                    </span>
+                  </div>
+                  <textarea
+                    rows={5}
+                    value={formData.resumeText}
+                    onChange={(e) => setFormData({ ...formData, resumeText: e.target.value })}
+                    placeholder="Paste or edit resume text here..."
+                    className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-white font-mono text-[11px] focus:ring-2 focus:ring-indigo-500"
+                  />
+                </div>
               </div>
 
               <div className="flex justify-end gap-2 pt-2 border-t border-slate-800">

@@ -1,11 +1,14 @@
 import asyncio
+import io
 import json
 import logging
 import uuid
 from typing import List, Optional
-from fastapi import FastAPI, Depends, HTTPException, BackgroundTasks, WebSocket, WebSocketDisconnect
+import docx
+from fastapi import FastAPI, Depends, HTTPException, BackgroundTasks, WebSocket, WebSocketDisconnect, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import PlainTextResponse
+import pypdf
 from sqlalchemy.orm import Session
 
 from backend.app.config import settings
@@ -93,6 +96,101 @@ def startup_event():
 @app.get("/health")
 def health():
     return {"status": "ok", "app": settings.APP_NAME, "mock_llm": settings.MOCK_LLM_MODE}
+
+@app.post("/parse-resume")
+async def parse_resume(file: UploadFile = File(...)):
+    """Extracts plain text from an uploaded resume file (PDF, DOCX, or TXT).
+    Validates against empty or corrupted files with clear error descriptions.
+    """
+    filename = file.filename or "unknown"
+    ext = filename.lower().split(".")[-1] if "." in filename else ""
+
+    if ext not in ["pdf", "docx", "txt", "md"]:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unsupported file type (.{ext}). Please upload a PDF, DOCX, or TXT file."
+        )
+
+    try:
+        content = await file.read()
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Failed to read uploaded file: {str(e)}")
+
+    if not content or len(content) == 0:
+        raise HTTPException(
+            status_code=400,
+            detail="The uploaded file is empty (0 bytes). Please upload a valid resume."
+        )
+
+    extracted_text = ""
+    if ext == "pdf":
+        try:
+            reader = pypdf.PdfReader(io.BytesIO(content))
+            pages_text = []
+            for idx, page in enumerate(reader.pages):
+                page_str = page.extract_text()
+                if page_str:
+                    pages_text.append(page_str)
+            extracted_text = "\n\n".join(pages_text).strip()
+            if not extracted_text:
+                raise HTTPException(
+                    status_code=400,
+                    detail="No extractable text found in PDF (the document may be scanned images or password protected)."
+                )
+        except HTTPException:
+            raise
+        except Exception as e:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Corrupt or unreadable PDF file: {str(e)}"
+            )
+
+    elif ext == "docx":
+        try:
+            doc = docx.Document(io.BytesIO(content))
+            paragraphs = [p.text.strip() for p in doc.paragraphs if p.text.strip()]
+            for table in doc.tables:
+                for row in table.rows:
+                    row_content = " | ".join(c.text.strip() for c in row.cells if c.text.strip())
+                    if row_content:
+                        paragraphs.append(row_content)
+            extracted_text = "\n".join(paragraphs).strip()
+            if not extracted_text:
+                raise HTTPException(
+                    status_code=400,
+                    detail="No extractable text found in DOCX file (document is empty)."
+                )
+        except HTTPException:
+            raise
+        except Exception as e:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Corrupt or unreadable DOCX file: {str(e)}"
+            )
+
+    elif ext in ["txt", "md"]:
+        try:
+            extracted_text = content.decode("utf-8").strip()
+        except UnicodeDecodeError:
+            try:
+                extracted_text = content.decode("latin-1").strip()
+            except Exception:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Unable to decode text file. Ensure it is encoded in UTF-8."
+                )
+        if not extracted_text:
+            raise HTTPException(
+                status_code=400,
+                detail="The text file is empty. Please upload a file with resume content."
+            )
+
+    return {
+        "filename": filename,
+        "text": extracted_text,
+        "char_count": len(extracted_text),
+        "word_count": len(extracted_text.split())
+    }
 
 @app.post("/hires", response_model=HireDetailResponse)
 def create_hire(req: HireCreateRequest, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
