@@ -9,7 +9,7 @@ from fastapi.responses import PlainTextResponse
 from sqlalchemy.orm import Session
 
 from backend.app.config import settings
-from backend.app.db import engine, get_db, Base
+from backend.app.db import engine, get_db, Base, ensure_db_schema
 from backend.app.models import (
     EmployeeModel,
     IdentityProposalModel,
@@ -38,7 +38,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("onboardos")
 
 # Initialize database schema
-Base.metadata.create_all(bind=engine)
+ensure_db_schema()
 
 app = FastAPI(
     title=settings.APP_NAME,

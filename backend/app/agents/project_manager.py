@@ -71,28 +71,60 @@ class ProjectManager:
                     f"{candidate_data.get('missing_skills', [])}."
                 )
 
-        # 3. Quick sanity check on numbers quoted in text
-        # If model quotes an exact percentage or score, ensure it's not wildly hallucinated
+        # 3. Quoted numbers & percentages verification
+        # Any number or percentage quoted must match deterministic metrics in candidate_data
         display_score = candidate_data.get("display_score", 0.0)
+        raw_score = candidate_data.get("raw_score", 0.0)
+        terms = candidate_data.get("terms", {})
+
+        allowed_numbers = {
+            round(display_score, 1),
+            int(round(display_score)),
+            round(raw_score, 4),
+            round(raw_score, 2),
+            round(raw_score, 3),
+        }
+        for t_info in terms.values():
+            val = t_info.get("value", 0.0)
+            contrib = t_info.get("contribution", 0.0)
+            weight = t_info.get("weight", 0.0)
+            allowed_numbers.update([
+                round(val, 1), round(val, 2), round(val, 3), round(val, 4),
+                round(val * 100, 1), int(round(val * 100)),
+                round(contrib, 1), round(contrib, 2), round(contrib, 3), round(contrib, 4),
+                round(contrib * 100, 1),
+                round(weight, 2), round(weight * 100, 1)
+            ])
+        # Add integer counts and standard config terms
+        allowed_numbers.update([
+            len(candidate_data.get("matched_skills", [])),
+            len(candidate_data.get("missing_skills", [])),
+            candidate_data.get("capacity", 0),
+            candidate_data.get("current_load", 0),
+            candidate_data.get("available_slots", 0),
+            1, 2, 3, 4, 5, 10, 30, 45, 25, 15
+        ])
+
         text_content = f"{rationale.why_this_team} {rationale.why_not_runner_up} {' '.join(rationale.risks)}"
+
+        # Verify decimal numbers
+        decimal_matches = re.findall(r"\b\d+\.\d+\b", text_content)
+        for d_str in decimal_matches:
+            d_val = float(d_str)
+            if not any(abs(d_val - allowed) < 0.15 for allowed in allowed_numbers):
+                return (
+                    f"Fabricated metric/number '{d_str}' quoted in rationale. "
+                    f"It does not match any deterministic score metric for {candidate_data['team']}."
+                )
+
+        # Verify percentages
         percent_matches = re.findall(r"(\d+(?:\.\d+)?)\s*%", text_content)
         for pct_str in percent_matches:
-            val = float(pct_str)
-            # Allowed percentages: display_score, term percentages, capacity percentages
-            allowed_vals = [
-                display_score,
-                round(candidate_data["terms"]["skill_match"]["value"] * 100, 1),
-                round(candidate_data["terms"]["gap_coverage"]["value"] * 100, 1),
-                round(candidate_data["terms"]["capacity"]["value"] * 100, 1),
-                round(candidate_data["terms"]["learning_gap"]["value"] * 100, 1),
-            ]
-            # If wildly off from any term (margin > 15) and claims to be the match/score percentage
-            # We don't fail just for standard integers, but check obvious hallucinations like 99% when score is 30%
-            if val > 90 and all(abs(val - av) > 10 for av in allowed_vals):
+            pct_val = float(pct_str)
+            if not any(abs(pct_val - allowed) < 0.15 for allowed in allowed_numbers):
                 return (
-                    f"Fabricated percentage '{val}%' quoted in rationale. "
-                    f"Actual deterministic metrics are: Score={display_score}%, "
-                    f"Skill Match={allowed_vals[1]}%, Capacity={allowed_vals[3]}%."
+                    f"Fabricated percentage '{pct_str}%' quoted in rationale. "
+                    f"Actual deterministic metrics are: Score={display_score}%, terms={allowed_numbers}."
                 )
 
         return None
