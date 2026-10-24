@@ -284,14 +284,34 @@ class WorkflowOrchestrator:
                 )
                 db.add(new_map)
 
+            # Group verified and unverified skills
+            verified_skills = [s.skill for s in skill_map.skills if s.status == "verified"]
+            unverified_skills = [s.skill for s in skill_map.skills if s.status != "verified"]
+
+            if emp.github_username:
+                why_verified = f"Verified ({len(verified_skills)}): {', '.join(verified_skills) or 'None'} (verified via public repos and code languages of @{emp.github_username}). "
+                why_unverified = f"Unverified/Claimed ({len(unverified_skills)}): {', '.join(unverified_skills) or 'None'} (claimed from resume; not found in public repos or languages for @{emp.github_username})."
+                verification_rationale = (
+                    f"Public repositories and languages inspected for @{emp.github_username}. "
+                    f"Skills {verified_skills} confirmed by repository and language signals; "
+                    f"skills {unverified_skills} remain claimed as no matching repository evidence was detected."
+                )
+            else:
+                why_verified = "Verified (0): None. "
+                why_unverified = f"Unverified/Claimed ({len(unverified_skills)}): {', '.join(unverified_skills) or 'None'} (no GitHub username provided, evaluated resume-only)."
+                verification_rationale = "No GitHub username was provided; skills could not be verified against repository evidence."
+
+            output_summary = f"{why_verified}{why_unverified}"
+            reason = f"Candidate competencies extracted and gap profiles calculated against 5 teams. {verification_rationale}"
+
             self.log_audit(
                 db,
                 employee_id=employee_id,
                 agent="Skill Manager",
                 action="extract_and_verify_skills",
                 input_summary=f"Resume ({len(emp.resume_text or '')} chars), GitHub: {emp.github_username or 'none'}",
-                output_summary=f"Identified {len(skill_map.skills)} skills ({sum(1 for s in skill_map.skills if s.status == 'verified')} verified)",
-                reason="Extracted candidate competencies and computed gap profiles against 5 engineering teams."
+                output_summary=output_summary,
+                reason=reason
             )
 
             self.update_step_status(db, emp, "skills", "done")
@@ -352,14 +372,37 @@ class WorkflowOrchestrator:
                 )
                 db.add(new_assign)
 
+            sb = assignment.score_breakdown or {}
+            score_components = (
+                f"skill_match={sb.get('skill_match', 0.0):.2f}, "
+                f"gap_coverage={sb.get('gap_coverage', 0.0):.2f}, "
+                f"capacity={sb.get('capacity', 0.0):.2f}, "
+                f"learning_gap={sb.get('learning_gap', 0.0):.2f} "
+                f"=> total_score={sb.get('total_score', 0.0):.2f}"
+            )
+            
+            output_summary = (
+                f"Top Match: '{assignment.team}' for '{assignment.project}' | "
+                f"Score breakdown components: [{score_components}]"
+            )
+            
+            reason = (
+                f"Deterministic scoring breakdown: Skill Match={sb.get('skill_match', 0.0):.2f} (weight 40%), "
+                f"Gap Coverage={sb.get('gap_coverage', 0.0):.2f} (weight 25%), "
+                f"Available Capacity={sb.get('capacity', 0.0):.2f} (weight 20%), "
+                f"Learning Gap={sb.get('learning_gap', 0.0):.2f} (weight 15%). "
+                f"Total composite score: {sb.get('total_score', 0.0):.2f}. "
+                f"Recommendation rationale: {assignment.reason}"
+            )
+
             self.log_audit(
                 db,
                 employee_id=employee_id,
                 agent="Project Manager",
                 action="rank_and_assign_team",
                 input_summary=f"{len(skill_names)} candidate skills, 5 teams, 8 projects",
-                output_summary=f"Top Match: '{assignment.team}' for '{assignment.project}' (Score: {assignment.score_breakdown.get('total_score')})",
-                reason=f"Top ranking determined deterministically. Rationale: {assignment.reason[:100]}..."
+                output_summary=output_summary,
+                reason=reason
             )
 
             self.update_step_status(db, emp, "assignment", "waiting_approval")
