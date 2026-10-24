@@ -1,4 +1,5 @@
 import asyncio
+import hashlib
 import io
 import json
 import logging
@@ -34,6 +35,7 @@ from backend.app.schemas import (
     Assignment,
     Guide,
     AuditEntry,
+    AuditVerificationResult,
     StepStatusInfo,
     TeamGapAnalysis,
     RedactionSummary
@@ -512,6 +514,72 @@ def get_hire_audit(id: str, db: Session = Depends(get_db)):
         )
         for l in logs
     ]
+
+@app.get("/hires/{id}/audit/verify", response_model=AuditVerificationResult)
+def verify_audit_integrity(id: str, db: Session = Depends(get_db)):
+    """Verifies cryptographic hash chain integrity for an employee's audit log."""
+    logs = db.query(AuditLogModel).filter(AuditLogModel.employee_id == id).order_by(AuditLogModel.timestamp.asc(), AuditLogModel.id.asc()).all()
+    if not logs:
+        return AuditVerificationResult(
+            valid=True,
+            total_entries=0,
+            chain_status="EMPTY",
+            message="No audit logs recorded for this hire yet."
+        )
+
+    expected_prev_hash = "0" * 64
+    for idx, log in enumerate(logs):
+        # 1. Check previous hash continuity
+        if idx == 0:
+            if log.previous_hash and log.previous_hash != expected_prev_hash and log.previous_hash != "GENESIS":
+                return AuditVerificationResult(
+                    valid=False,
+                    total_entries=len(logs),
+                    broken_index=idx,
+                    broken_entry_id=log.id,
+                    chain_status="COMPROMISED",
+                    message=f"Genesis block previous_hash mismatch at entry {idx}."
+                )
+        else:
+            if log.previous_hash != logs[idx - 1].entry_hash:
+                return AuditVerificationResult(
+                    valid=False,
+                    total_entries=len(logs),
+                    broken_index=idx,
+                    broken_entry_id=log.id,
+                    chain_status="COMPROMISED",
+                    message=f"Hash chain broken between entry {idx-1} and {idx}."
+                )
+
+        # 2. Check current entry hash matches content
+        payload = f"{log.previous_hash}|{log.employee_id}|{log.timestamp}|{log.agent}|{log.action}|{log.entry_type}|{log.actor}|{log.duration_ms:.2f}|{log.input_summary}|{log.output_summary}|{log.reason}"
+        computed_hash = hashlib.sha256(payload.encode("utf-8")).hexdigest()
+        if log.entry_hash != computed_hash:
+            return AuditVerificationResult(
+                valid=False,
+                total_entries=len(logs),
+                broken_index=idx,
+                broken_entry_id=log.id,
+                chain_status="COMPROMISED",
+                message=f"Tampering detected: cryptographic hash mismatch at entry {idx} (ID: {log.id})."
+            )
+
+    return AuditVerificationResult(
+        valid=True,
+        total_entries=len(logs),
+        chain_status="INTACT",
+        message="Cryptographic hash chain verified successfully. No tampering detected."
+    )
+
+@app.put("/hires/{id}/audit")
+@app.patch("/hires/{id}/audit")
+@app.delete("/hires/{id}/audit")
+def audit_modification_prohibited(id: str):
+    """Explicitly rejects any update or delete operation on the immutable audit trail."""
+    raise HTTPException(
+        status_code=405,
+        detail="Audit Log is strictly append-only. Modification and deletion paths are prohibited."
+    )
 
 @app.post("/hires/{id}/approve/{step}")
 def approve_step(id: str, step: str, req: ApprovalRequest, db: Session = Depends(get_db)):

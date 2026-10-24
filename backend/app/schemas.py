@@ -133,6 +133,14 @@ class AuditEntry(BaseModel):
     previous_hash: Optional[str] = None
     entry_hash: Optional[str] = None
 
+class AuditVerificationResult(BaseModel):
+    valid: bool
+    total_entries: int
+    chain_status: str  # "INTACT" | "COMPROMISED" | "EMPTY"
+    message: str
+    broken_index: Optional[int] = None
+    broken_entry_id: Optional[str] = None
+
 # 7. Identity Proposal
 class IdentityProposal(BaseModel):
     employee_id: str

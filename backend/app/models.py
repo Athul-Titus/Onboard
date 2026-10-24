@@ -1,5 +1,5 @@
 from datetime import datetime, timezone
-from sqlalchemy import Column, String, Text, Boolean, Integer, Float, ForeignKey, DateTime
+from sqlalchemy import Column, String, Text, Boolean, Integer, Float, ForeignKey, DateTime, event
 from sqlalchemy.orm import relationship
 from backend.app.db import Base
 
@@ -17,6 +17,7 @@ class EmployeeModel(Base):
     status = Column(String, default="queued")
     github_username = Column(String, nullable=True)
     resume_text = Column(Text, nullable=True)
+    redaction_summary_json = Column(Text, nullable=True)
     current_step = Column(String, default="identity")
     step_status_json = Column(Text, default="{}")
     created_at = Column(DateTime, default=utc_now)
@@ -109,6 +110,10 @@ class AuditLogModel(Base):
     entry_hash = Column(String(64), nullable=True)
 
     employee = relationship("EmployeeModel", back_populates="audit_logs")
+
+@event.listens_for(AuditLogModel, "before_update")
+def prevent_audit_log_update(mapper, connection, target):
+    raise PermissionError("AuditLog is strictly append-only: modifications are prohibited.")
 
 
 class MockDirectoryUser(Base):
