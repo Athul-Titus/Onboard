@@ -1,6 +1,7 @@
 import json
 import re
 from typing import List, Dict, Any, Optional, Tuple
+from sqlalchemy.orm import Session
 from pydantic import BaseModel, Field
 
 from backend.app.config import settings
@@ -191,12 +192,37 @@ class SkillManager:
         self,
         employee_id: str,
         resume_text: Optional[str],
-        github_username: Optional[str]
+        github_username: Optional[str],
+        db: Optional[Session] = None
     ) -> SkillMap:
         safe_resume, pii_summary = self.redact_pii_with_summary(resume_text or "General Software Engineer with experience in Python, APIs, and web services.")
 
         # 1. Fetch GitHub evidence
+        import time
+        t0 = time.perf_counter()
         gh_evidence = github_tool.get_user_evidence(github_username)
+        dur_ms = round((time.perf_counter() - t0) * 1000, 2)
+
+        if db:
+            try:
+                from backend.app.orchestrator import orchestrator
+                langs = list(gh_evidence.get("languages", {}).keys())
+                repos_count = gh_evidence.get("repos_count", 0)
+                state = gh_evidence.get("verification_state", "resume-only")
+                orchestrator.log_audit(
+                    db=db,
+                    employee_id=employee_id,
+                    agent="GitHub Tool",
+                    action="tool:github_fetch",
+                    entry_type="tool_invocation",
+                    actor="Skill Manager",
+                    duration_ms=dur_ms,
+                    input_summary=f"username='{github_username or 'none'}'",
+                    output_summary=f"state='{state}', repos_inspected={repos_count}, languages={langs}, has_tests={gh_evidence.get('has_tests', False)}",
+                    reason="Fetch public GitHub repositories, code languages, and test suites for skill verification"
+                )
+            except Exception:
+                pass
 
         # 2. Extract skills via LLM with structured schema
         user_prompt = (

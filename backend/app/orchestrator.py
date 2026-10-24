@@ -195,7 +195,24 @@ class WorkflowOrchestrator:
         final_email = edited_email or prop.proposed_email
         final_username = final_email.split("@")[0]
 
+        import time
+        t0 = time.perf_counter()
         account_result = self.identity_agent.provision_account(db, final_username, final_email, emp.name)
+        dur_ms = round((time.perf_counter() - t0) * 1000, 2)
+
+        # Log tool invocation: create_account
+        self.log_audit(
+            db,
+            employee_id=employee_id,
+            agent="Directory Service",
+            action="tool:create_account",
+            entry_type="tool_invocation",
+            actor="Identity Agent",
+            duration_ms=dur_ms,
+            input_summary=f"username='{final_username}', email='{final_email}', full_name='{emp.name}'",
+            output_summary=f"status='{account_result.get('status')}', user_id='{account_result.get('user_id')}', provisioned_systems={account_result.get('provisioned_systems')}",
+            reason="Provision corporate directory account and simulated SSO access"
+        )
 
         prop.proposed_email = final_email
         prop.username = final_username
@@ -229,7 +246,8 @@ class WorkflowOrchestrator:
             skill_map = skill_manager.extract_skills(
                 employee_id=employee_id,
                 resume_text=emp.resume_text,
-                github_username=emp.github_username
+                github_username=emp.github_username,
+                db=db
             )
 
             # Persist skill map
@@ -412,6 +430,7 @@ class WorkflowOrchestrator:
                 skill_gaps=skill_gaps,
                 role=emp.role or "",
                 hire_name=emp.name or "",
+                db=db,
             )
 
             existing = db.query(GuideModel).filter(GuideModel.employee_id == employee_id).first()

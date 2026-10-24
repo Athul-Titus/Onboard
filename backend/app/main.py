@@ -450,12 +450,18 @@ def get_hire(id: str, db: Session = Depends(get_db)):
     # Audit Logs
     audit_logs = [
         AuditEntry(
+            id=log.id,
             timestamp=log.timestamp,
             agent=log.agent,
             action=log.action,
+            entry_type=log.entry_type or "agent_step",
+            actor=log.actor or "System",
+            duration_ms=log.duration_ms or 0.0,
             input_summary=log.input_summary,
             output_summary=log.output_summary,
-            reason=log.reason
+            reason=log.reason,
+            previous_hash=log.previous_hash,
+            entry_hash=log.entry_hash
         )
         for log in sorted(emp.audit_logs, key=lambda x: x.timestamp)
     ]
@@ -491,12 +497,18 @@ def get_hire_audit(id: str, db: Session = Depends(get_db)):
     logs = db.query(AuditLogModel).filter(AuditLogModel.employee_id == id).order_by(AuditLogModel.timestamp.asc()).all()
     return [
         AuditEntry(
+            id=l.id,
             timestamp=l.timestamp,
             agent=l.agent,
             action=l.action,
+            entry_type=l.entry_type or "agent_step",
+            actor=l.actor or "System",
+            duration_ms=l.duration_ms or 0.0,
             input_summary=l.input_summary,
             output_summary=l.output_summary,
-            reason=l.reason
+            reason=l.reason,
+            previous_hash=l.previous_hash,
+            entry_hash=l.entry_hash
         )
         for l in logs
     ]

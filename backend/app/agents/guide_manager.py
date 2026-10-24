@@ -1,5 +1,6 @@
 import re
 from typing import List, Optional
+from sqlalchemy.orm import Session
 from pydantic import BaseModel, Field
 
 from backend.app.schemas import Guide, GuideSection, GuideItem, Citation
@@ -43,6 +44,7 @@ class GuideManager:
         skill_gaps: List[str],
         role: str = "",
         hire_name: str = "",
+        db: Optional[Session] = None,
     ) -> Guide:
         sections: List[GuideSection] = []
         role_label = role or "Engineer"
@@ -60,6 +62,8 @@ class GuideManager:
                 f"New {role_label} joining {team_name}. "
                 f"List every setup step: repo clone, dependency install, local server start, IDE config."
             ),
+            employee_id=employee_id,
+            db=db,
         )
         sections.append(GuideSection(title="Day 1 Setup", items=day1_items))
 
@@ -72,6 +76,8 @@ class GuideManager:
                 "Mandatory security: 1Password vault setup, MFA enrolment, VPN, "
                 "Slack workspace channels, and JIRA/GitHub access requests."
             ),
+            employee_id=employee_id,
+            db=db,
         )
         sections.append(GuideSection(title="Tools & Access", items=tools_items))
 
@@ -81,6 +87,8 @@ class GuideManager:
             query=f"key leads engineering manager mentors tech lead {team_name}",
             team_filter=team_name,
             context_hint=f"Identify engineering manager, tech lead, buddy, and senior engineers on {team_name}.",
+            employee_id=employee_id,
+            db=db,
         )
         sections.append(GuideSection(title="People to Meet", items=people_items))
 
@@ -94,6 +102,8 @@ class GuideManager:
                 "Week 1: read codebase + attend standups. "
                 "Week 2: first PR. Week 3: own a ticket. Week 4: independent deployment."
             ),
+            employee_id=employee_id,
+            db=db,
         )
         sections.append(GuideSection(title="Week 1–4 Goals", items=goals_items))
 
@@ -107,6 +117,8 @@ class GuideManager:
                 f"Targeted ramp-up for a {role_label} who needs to close these gaps: "
                 f"{', '.join(gap_labels)}. Recommend specific internal docs, repos, or training."
             ),
+            employee_id=employee_id,
+            db=db,
         )
         sections.append(GuideSection(title="Learn Next (Ramp-up)", items=learn_items))
 
@@ -166,9 +178,33 @@ class GuideManager:
         query: str,
         team_filter: str,
         context_hint: str,
+        employee_id: Optional[str] = None,
+        db: Optional[Session] = None,
     ) -> List[GuideItem]:
         # Retrieve and clean chunks
+        import time
+        t0 = time.perf_counter()
         raw_chunks = retriever.hybrid_search(query, top_k=5, team_filter=team_filter)
+        dur_ms = round((time.perf_counter() - t0) * 1000, 2)
+
+        if db and employee_id:
+            try:
+                from backend.app.orchestrator import orchestrator
+                top_score = raw_chunks[0]["score"] if raw_chunks else 0.0
+                orchestrator.log_audit(
+                    db=db,
+                    employee_id=employee_id,
+                    agent="Hybrid Retriever",
+                    action="tool:retrieval_query",
+                    entry_type="tool_invocation",
+                    actor="Guide Manager",
+                    duration_ms=dur_ms,
+                    input_summary=f"query='{query}', top_k=5, team_filter='{team_filter}'",
+                    output_summary=f"Retrieved {len(raw_chunks)} chunks (top score: {top_score})",
+                    reason=f"Retrieve grounded documentation chunks for section '{section_title}'"
+                )
+            except Exception:
+                pass
         chunks = [c for c in raw_chunks if self._is_useful_chunk(c)]
 
         # Build context for LLM (clean text)

@@ -63,7 +63,28 @@ class IdentityAgent:
             )
             email_candidate = f"{username_candidate}@{self.domain}".lower()
 
+            import time
+            t0 = time.perf_counter()
             email_ok = check_email_available(db, email_candidate)
+            dur_ms = round((time.perf_counter() - t0) * 1000, 2)
+
+            try:
+                from backend.app.orchestrator import orchestrator
+                orchestrator.log_audit(
+                    db=db,
+                    employee_id=employee_id,
+                    agent="Directory Service",
+                    action="tool:check_email_available",
+                    entry_type="tool_invocation",
+                    actor="Identity Agent",
+                    duration_ms=dur_ms,
+                    input_summary=f"email='{email_candidate}'",
+                    output_summary=f"available={email_ok}",
+                    reason=f"Verify email availability in corporate directory for rule '{rule_name}'"
+                )
+            except Exception:
+                pass
+
             username_ok = check_username_available(db, username_candidate)
 
             if email_ok and username_ok:
