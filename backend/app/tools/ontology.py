@@ -57,8 +57,39 @@ class SkillOntology:
         return clean, False
 
     def get_category(self, canonical_name: str) -> str:
-        """Returns the canonical category for a skill (e.g. Languages, Backend Frameworks, Cloud & DevOps)."""
-        return self.skill_categories.get(canonical_name.lower(), "General Engineering")
+        """
+        Returns one of the 7 canonical categories:
+        language, framework, data/ml, devops, database, tool, soft skill.
+        """
+        lowered = canonical_name.lower()
+
+        # Specific skill category overrides
+        special_map = {
+            "git": "tool",
+            "unit testing": "tool",
+            "ui/ux design": "tool",
+            "system design": "soft skill",
+            "agile / scrum": "soft skill",
+            "security": "devops"
+        }
+        if lowered in special_map:
+            return special_map[lowered]
+
+        raw_cat = self.skill_categories.get(lowered, "tool").lower()
+        if "database" in raw_cat:
+            return "database"
+        elif "language" in raw_cat:
+            return "language"
+        elif "framework" in raw_cat or "mobile" in raw_cat:
+            return "framework"
+        elif "data" in raw_cat or "ai" in raw_cat or "ml" in raw_cat:
+            return "data/ml"
+        elif "devops" in raw_cat or "cloud" in raw_cat:
+            return "devops"
+        elif "soft" in raw_cat or "architecture" in raw_cat:
+            return "soft skill"
+        else:
+            return "tool"
 
     def get_aliases(self, canonical_name: str) -> List[str]:
         """Returns all recognized aliases for a canonical skill."""
