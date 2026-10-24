@@ -123,6 +123,20 @@ python backend/eval/eval_pipeline.py
 
 ---
 
+## 🎯 Testing & Demo Mode Scenarios
+
+When opening the **New Hire Intake** modal:
+- **Clean Production Form**: Developer hints are concealed behind the **"Demo Mode"** toggle in the modal header.
+- **Identity Collision Testing**:
+  - Click **Demo Mode: ON** to reveal quick testing shortcuts:
+    - `John Doe` -> triggers email collision against existing `jdoe@company.com` in corporate directory; resolves to `john.doe@company.com` per naming policy rule 2.
+    - `Alex Chen` -> triggers collision on `achen@company.com` and `alex.chen@company.com`; resolves to `alex.chen2@company.com` with human review flagged.
+- **Resume File Upload**:
+  - Upload `.pdf`, `.docx`, or `.txt` resumes. The backend automatically parses text via `pypdf` and `python-docx` while detecting empty or corrupted files.
+  - A fallback editable textarea is always preserved for rapid manual edits.
+
+---
+
 ## 🛡️ Guardrails & Safety Architecture
 
 1. **Strict Citation Grounding**: Every instruction in the 30-day guide must cite an internal company document and section. Items lacking documentation explicitly default to `"Not documented - ask your lead"`.

@@ -61,6 +61,7 @@ Contact: +1-555-0199, 123 Tech Lane, San Francisco CA, john.personal@gmail.com, 
   const [resumeFileName, setResumeFileName] = useState('');
   const [uploadingResume, setUploadingResume] = useState(false);
   const [resumeUploadError, setResumeUploadError] = useState(null);
+  const [demoMode, setDemoMode] = useState(false);
 
   const handleResumeFileUpload = async (e) => {
     const file = e.target.files?.[0];
@@ -1093,20 +1094,67 @@ Contact: +1-555-0199, 123 Tech Lane, San Francisco CA, john.personal@gmail.com, 
                 <PlusCircle className="w-5 h-5 text-indigo-400" />
                 New Hire Onboarding Intake
               </h3>
-              <button onClick={() => setShowIntakeModal(false)} className="text-slate-400 hover:text-white">
-                <X className="w-5 h-5" />
-              </button>
+              <div className="flex items-center gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => setDemoMode(!demoMode)}
+                  className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold border transition ${
+                    demoMode
+                      ? 'bg-amber-500/15 text-amber-300 border-amber-500/40 shadow-sm shadow-amber-500/10'
+                      : 'bg-slate-800/80 text-slate-400 border-slate-700 hover:text-slate-300'
+                  }`}
+                  title="Toggle developer hints & directory collision shortcuts"
+                >
+                  <Sparkles className="w-3 h-3 text-amber-400" />
+                  <span>Demo Mode: {demoMode ? 'ON' : 'OFF'}</span>
+                </button>
+                <button onClick={() => setShowIntakeModal(false)} className="text-slate-400 hover:text-white transition">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
             </div>
+
+            {/* Developer Hints behind Demo Mode Toggle */}
+            {demoMode && (
+              <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs space-y-1.5 animate-fadeIn">
+                <div className="flex items-center gap-1.5 font-semibold text-amber-200">
+                  <Info className="w-4 h-4 text-amber-400 shrink-0" />
+                  <span>Developer Collision Testing Shortcuts:</span>
+                </div>
+                <p className="text-[11px] text-amber-200/80 leading-relaxed">
+                  These names exist in the company directory to demonstrate identity conflict resolution:
+                </p>
+                <div className="flex flex-wrap gap-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => setFormData((prev) => ({ ...prev, name: 'John Doe' }))}
+                    className="px-2.5 py-1 bg-amber-500/20 hover:bg-amber-500/30 text-amber-200 rounded-lg border border-amber-500/40 font-mono text-[11px] transition"
+                  >
+                    John Doe (jdoe collision)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFormData((prev) => ({ ...prev, name: 'Alex Chen' }))}
+                    className="px-2.5 py-1 bg-amber-500/20 hover:bg-amber-500/30 text-amber-200 rounded-lg border border-amber-500/40 font-mono text-[11px] transition"
+                  >
+                    Alex Chen (achen collision)
+                  </button>
+                </div>
+              </div>
+            )}
 
             <form onSubmit={handleIntakeSubmit} className="space-y-3 text-xs">
               <div>
-                <label className="block text-slate-300 font-semibold mb-1">Full Name (try 'John Doe' or 'Alex Chen' to test collisions)</label>
+                <label className="block text-slate-300 font-semibold mb-1">
+                  Full Name <span className="text-rose-400">*</span>
+                </label>
                 <input
                   type="text"
                   required
+                  placeholder="e.g. Jane Doe"
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-white focus:ring-2 focus:ring-indigo-500"
+                  className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-white focus:ring-2 focus:ring-indigo-500 placeholder:text-slate-600"
                 />
               </div>
 
