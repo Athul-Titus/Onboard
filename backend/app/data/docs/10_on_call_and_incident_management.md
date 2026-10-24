@@ -1,5 +1,7 @@
 # On-Call and Incident Management
 
+> **Sample Data**: This document is synthetic sample documentation created for OnboardOS multi-agent orchestrator evaluation and demonstration.
+
 ## Rotation Overview
 - Engineers join the primary on-call rotation after completing their first 30 days and shadowing at least two weekly shifts.
 - On-call shifts run for 7 days, transitioning every Tuesday at 10:00 AM PST.

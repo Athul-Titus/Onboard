@@ -1,5 +1,7 @@
 # Team Data and ML Platform Overview
 
+> **Sample Data**: This document is synthetic sample documentation created for OnboardOS multi-agent orchestrator evaluation and demonstration.
+
 ## Mission Statement
 We build high-performance data infrastructure, feature extraction pipelines, vector search indices, and large language model integration layers that power intelligence across the enterprise.
 
@@ -7,8 +9,8 @@ We build high-performance data infrastructure, feature extraction pipelines, vec
 - **Slack Channel**: `#team-data-ml`
 - **Daily Standup**: Monday through Friday at 9:30 AM PST.
 - **Reading Group**: Bi-weekly paper review on state-of-the-art NLP, RAG, and deep learning.
-- **Key Lead**: Dr. Alex Chen (Head of ML Infrastructure, alex.chen@company.com).
-- **Staff Data Engineer**: David Kim (david.kim@company.com).
+- **Key Lead**: Dr. Alex Chen (Head of ML Infrastructure, `alex.chen@company.com`).
+- **Staff Data Engineer**: David Kim (`david.kim@company.com`).
 
 ## First 30 Days Milestones
 - **Day 1**: Set up local PyTorch, ChromaDB, and run semantic search validation scripts.

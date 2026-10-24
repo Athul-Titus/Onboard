@@ -1,5 +1,7 @@
 # Architecture and Tech Stack Standards
 
+> **Sample Data**: This document is synthetic sample documentation created for OnboardOS multi-agent orchestrator evaluation and demonstration.
+
 ## Microservice Architecture
 - Core services are written in Python (FastAPI) or Go, communicating via gRPC internally and REST / GraphQL externally.
 - All HTTP endpoints must provide strict Pydantic or OpenAPI schema definitions.
@@ -10,6 +12,6 @@
 - Caching is managed via Redis clusters. All cached keys must specify an explicit Time-To-Live (TTL) to avoid memory exhaustion.
 - Vector search queries are handled by ChromaDB for local experimentation and dedicated vector clusters in production.
 
-## Telemetry & Observability
+## Telemetry and Observability
 - All services must emit distributed traces using the OpenTelemetry SDK.
 - Prometheus monitors error rates, p95/p99 request latencies, and CPU/memory utilization.
