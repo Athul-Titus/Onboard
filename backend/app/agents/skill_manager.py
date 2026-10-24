@@ -4,7 +4,7 @@ from typing import List, Dict, Any, Optional, Tuple
 from pydantic import BaseModel, Field
 
 from backend.app.config import settings
-from backend.app.schemas import SkillItem, SkillMap, SkillStatus, TeamGapAnalysis
+from backend.app.schemas import SkillItem, SkillMap, SkillStatus, TeamGapAnalysis, RedactionSummary
 from backend.app.tools.github_tool import github_tool
 from backend.app.tools.ontology import ontology
 from backend.app.llm_client import LLMClient
@@ -33,16 +33,53 @@ class SkillManager:
         with open(teams_path, "r", encoding="utf-8") as f:
             self.teams = json.load(f)
 
+    def redact_pii_with_summary(self, text: str) -> Tuple[str, Dict[str, Any]]:
+        """Strips phone numbers, physical addresses, dates of birth, and personal emails before LLM processing.
+        Returns the sanitized text and a breakdown summary: count and types removed (phone, address, email, DOB).
+        """
+        if not text:
+            return "", {"total": 0, "phone": 0, "address": 0, "email": 0, "dob": 0, "types_removed": []}
+
+        # 1. Phone numbers
+        phone_pattern = r"(?:\+?\d{1,3}[-.\s]?)?(?:\(?\d{3}\)?[-.\s]?)?\d{3}[-.\s]?\d{4}"
+        phone_matches = re.findall(phone_pattern, text)
+        redacted = re.sub(phone_pattern, "[PHONE REDACTED]", text)
+
+        # 2. Personal emails
+        email_pattern = r"[a-zA-Z0-9_.+-]+@(?:gmail|yahoo|outlook|hotmail|icloud|protonmail|aol)\.[a-zA-Z0-9-.]+"
+        email_matches = re.findall(email_pattern, redacted, flags=re.IGNORECASE)
+        redacted = re.sub(email_pattern, "[EMAIL REDACTED]", redacted, flags=re.IGNORECASE)
+
+        # 3. Dates of birth
+        dob_pattern = r"(?:DOB|Date of Birth|Birthdate)\s*[:=-]?\s*[\d/-]+"
+        dob_matches = re.findall(dob_pattern, redacted, flags=re.IGNORECASE)
+        redacted = re.sub(dob_pattern, "[DOB REDACTED]", redacted, flags=re.IGNORECASE)
+
+        # 4. Physical street addresses
+        address_pattern = r"\d+\s+[A-Za-z0-9\s,]+(?:Street|St|Avenue|Ave|Road|Rd|Boulevard|Blvd|Drive|Dr|Lane|Ln|Way|Court|Ct)"
+        address_matches = re.findall(address_pattern, redacted, flags=re.IGNORECASE)
+        redacted = re.sub(address_pattern, "[ADDRESS REDACTED]", redacted, flags=re.IGNORECASE)
+
+        counts = {
+            "phone": len(phone_matches),
+            "email": len(email_matches),
+            "dob": len(dob_matches),
+            "address": len(address_matches),
+        }
+        types_removed = [k for k, v in counts.items() if v > 0]
+        summary = {
+            "total": sum(counts.values()),
+            "phone": counts["phone"],
+            "email": counts["email"],
+            "dob": counts["dob"],
+            "address": counts["address"],
+            "types_removed": types_removed
+        }
+        return redacted, summary
+
     def redact_pii(self, text: str) -> str:
         """Strips phone numbers, physical addresses, dates of birth, and personal emails before LLM processing."""
-        # Redact phone numbers
-        redacted = re.sub(r"(\+?\d{1,3}[-.\s]?)?(\(?\d{3}\)?[-.\s]?)?\d{3}[-.\s]?\d{4}", "[PHONE REDACTED]", text)
-        # Redact personal emails
-        redacted = re.sub(r"[a-zA-Z0-9_.+-]+@(gmail|yahoo|outlook|hotmail|icloud)\.com", "[EMAIL REDACTED]", redacted)
-        # Redact dates of birth
-        redacted = re.sub(r"(DOB|Date of Birth|Birthdate)\s*[:=-]?\s*[\d/-]+", "[DOB REDACTED]", redacted, flags=re.IGNORECASE)
-        # Redact street addresses
-        redacted = re.sub(r"\d+\s+[A-Za-z0-9\s,]+(Street|St|Avenue|Ave|Road|Rd|Boulevard|Blvd|Drive|Dr)", "[ADDRESS REDACTED]", redacted)
+        redacted, _ = self.redact_pii_with_summary(text)
         return redacted
 
     def find_resume_evidence(self, resume_text: str, canonical_skill: str) -> List[str]:

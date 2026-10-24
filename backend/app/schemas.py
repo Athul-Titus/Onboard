@@ -37,12 +37,21 @@ class TeamGapAnalysis(BaseModel):
     missing_skills: List[str] = Field(default_factory=list)
     coverage_percent: float = 0.0
 
+class RedactionSummary(BaseModel):
+    total: int = 0
+    phone: int = 0
+    address: int = 0
+    email: int = 0
+    dob: int = 0
+    types_removed: List[str] = Field(default_factory=list)
+
 class SkillMap(BaseModel):
     employee_id: str
     skills: List[SkillItem] = Field(default_factory=list)
     gaps_by_team: Dict[str, TeamGapAnalysis] = Field(default_factory=dict)
     verification_state: str = "resume-only"  # "verified" | "resume-only"
     github_summary: Optional[str] = None
+    redaction_summary: Optional[RedactionSummary] = None
 
 # 3. Team & Project
 class Team(BaseModel):
@@ -159,3 +168,4 @@ class HireDetailResponse(BaseModel):
     assignment: Optional[Assignment] = None
     guide: Optional[Guide] = None
     audit_logs: List[AuditEntry] = Field(default_factory=list)
+    redaction_summary: Optional[RedactionSummary] = None
