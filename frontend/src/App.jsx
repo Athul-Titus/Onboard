@@ -6,10 +6,12 @@ import {
   Compass,
   FileText,
   AlertCircle,
+  AlertTriangle,
   CheckCircle2,
   Clock,
   ExternalLink,
   ChevronRight,
+  ChevronDown,
   Download,
   PlusCircle,
   RefreshCw,
@@ -19,7 +21,8 @@ import {
   Lock,
   Layers,
   Sparkles,
-  Info
+  Info,
+  HelpCircle
 } from 'lucide-react';
 
 const API_BASE = 'http://localhost:8000';
@@ -29,10 +32,12 @@ export default function App() {
   const [selectedHireId, setSelectedHireId] = useState(null);
   const [hireDetail, setHireDetail] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [actionInFlight, setActionInFlight] = useState(false);
   const [showIntakeModal, setShowIntakeModal] = useState(false);
   const [showOverrideModal, setShowOverrideModal] = useState(false);
   const [citationModal, setCitationModal] = useState(null);
   const [activeTab, setActiveTab] = useState('workflow'); // 'workflow' | 'guide' | 'audit'
+  const [seedOptions, setSeedOptions] = useState({ teams: [], projects: [] });
 
   // Intake form state
   const [formData, setFormData] = useState({
@@ -92,6 +97,13 @@ Contact: +1-555-0199, 123 Tech Lane, San Francisco CA, john.personal@gmail.com, 
   }, []);
 
   useEffect(() => {
+    fetch(`${API_BASE}/options/teams-and-projects`)
+      .then(res => res.json())
+      .then(data => setSeedOptions(data))
+      .catch(err => console.warn('Could not load seed teams and projects:', err));
+  }, []);
+
+  useEffect(() => {
     if (selectedHireId) {
       fetchHireDetail(selectedHireId);
       const detailInterval = setInterval(() => fetchHireDetail(selectedHireId), 3000);
@@ -130,7 +142,8 @@ Contact: +1-555-0199, 123 Tech Lane, San Francisco CA, john.personal@gmail.com, 
 
   // Approve a step (identity or assignment)
   const handleApproveStep = async (step, editedValue = null) => {
-    if (!selectedHireId) return;
+    if (!selectedHireId || actionInFlight) return;
+    setActionInFlight(true);
     try {
       const res = await fetch(`${API_BASE}/hires/${selectedHireId}/approve/${step}`, {
         method: 'POST',
@@ -141,18 +154,25 @@ Contact: +1-555-0199, 123 Tech Lane, San Francisco CA, john.personal@gmail.com, 
         })
       });
       if (res.ok) {
-        fetchHireDetail(selectedHireId);
-        fetchHires();
+        await fetchHireDetail(selectedHireId);
+        await fetchHires();
       }
     } catch (err) {
       alert('Approval error: ' + err.message);
+    } finally {
+      setActionInFlight(false);
     }
   };
 
   // Override assignment
   const handleOverrideSubmit = async (e) => {
     e.preventDefault();
-    if (!selectedHireId) return;
+    if (!selectedHireId || actionInFlight) return;
+    if (overrideData.reason.trim().length < 10) {
+      alert('Override justification reason must be at least 10 characters.');
+      return;
+    }
+    setActionInFlight(true);
     try {
       const res = await fetch(`${API_BASE}/hires/${selectedHireId}/override-assignment`, {
         method: 'POST',
@@ -161,16 +181,39 @@ Contact: +1-555-0199, 123 Tech Lane, San Francisco CA, john.personal@gmail.com, 
           manager_name: 'Marcus Vance (Engineering Lead)',
           team: overrideData.team,
           project: overrideData.project,
-          reason: overrideData.reason
+          reason: overrideData.reason.trim()
         })
       });
       if (res.ok) {
         setShowOverrideModal(false);
-        fetchHireDetail(selectedHireId);
-        fetchHires();
+        await fetchHireDetail(selectedHireId);
+        await fetchHires();
+      } else {
+        const errData = await res.json().catch(() => ({}));
+        alert('Override error: ' + (errData.detail || 'Failed to override placement'));
       }
     } catch (err) {
       alert('Override error: ' + err.message);
+    } finally {
+      setActionInFlight(false);
+    }
+  };
+
+  // Retry step when in needs_attention
+  const handleRetryAssignment = async () => {
+    if (!selectedHireId || actionInFlight) return;
+    setActionInFlight(true);
+    try {
+      const res = await fetch(`${API_BASE}/hires/${selectedHireId}/retry/assignment`, {
+        method: 'POST'
+      });
+      if (res.ok) {
+        await fetchHireDetail(selectedHireId);
+      }
+    } catch (err) {
+      alert('Retry error: ' + err.message);
+    } finally {
+      setActionInFlight(false);
     }
   };
 
@@ -178,6 +221,20 @@ Contact: +1-555-0199, 123 Tech Lane, San Francisco CA, john.personal@gmail.com, 
   const handleExport = () => {
     if (!selectedHireId) return;
     window.open(`${API_BASE}/hires/${selectedHireId}/export`, '_blank');
+  };
+
+  const getStrengthBadge = (label) => {
+    switch (label) {
+      case 'strong':
+        return <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-950 text-emerald-300 border border-emerald-700/80">Strong Fit</span>;
+      case 'moderate':
+        return <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-blue-950 text-blue-300 border border-blue-700/80">Moderate Fit</span>;
+      case 'weak':
+        return <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-amber-950 text-amber-300 border border-amber-700/80">Weak Fit</span>;
+      case 'not_recommended':
+      default:
+        return <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-rose-950 text-rose-300 border border-rose-700/80">Not Recommended</span>;
+    }
   };
 
   const getStatusBadge = (status) => {
@@ -188,6 +245,8 @@ Contact: +1-555-0199, 123 Tech Lane, San Francisco CA, john.personal@gmail.com, 
         return <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-950 text-amber-400 border border-amber-800 animate-pulse"><Clock className="w-3 h-3" /> Awaiting Approval</span>;
       case 'running':
         return <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-950 text-blue-400 border border-blue-800 animate-spin"><RefreshCw className="w-3 h-3" /> Running</span>;
+      case 'insufficient_data':
+        return <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-950 text-amber-400 border border-amber-800"><AlertTriangle className="w-3 h-3" /> Insufficient Data</span>;
       case 'needs_attention':
         return <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-rose-950 text-rose-400 border border-rose-800"><AlertCircle className="w-3 h-3" /> Attention</span>;
       default:
@@ -469,7 +528,7 @@ Contact: +1-555-0199, 123 Tech Lane, San Francisco CA, john.personal@gmail.com, 
                     </div>
                     <div>
                       <h3 className="font-semibold text-white">Project Manager Agent</h3>
-                      <p className="text-xs text-slate-400">Deterministic Scoring Formula (Weights: 40% Match, 25% Gap, 20% Capacity, -15% Learning)</p>
+                      <p className="text-xs text-slate-400">Deterministic Scoring Formula (Weights: 45% Match, 30% Gap, 25% Capacity, -15% Learning Penalty)</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
@@ -482,72 +541,415 @@ Contact: +1-555-0199, 123 Tech Lane, San Francisco CA, john.personal@gmail.com, 
                   </div>
                 </div>
 
-                {hireDetail?.assignment ? (
+                {/* Banner: Insufficient Data */}
+                {(hireDetail?.assignment?.insufficient_data || hireDetail?.steps?.assignment?.status === 'insufficient_data') && (
+                  <div className="mb-4 p-3 bg-amber-950/40 border border-amber-800/80 rounded-xl flex items-start gap-2.5 text-xs text-amber-200">
+                    <AlertTriangle className="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <div className="font-bold">Insufficient Skill Data</div>
+                      <p className="text-amber-300/90 mt-0.5">
+                        No candidate technical skills were extracted from the resume. Deterministic team placement paused to prevent zero-scoring assignments.
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Banner: Weak Fit */}
+                {hireDetail?.assignment?.weak_fit && (
+                  <div className="mb-4 p-3 bg-amber-950/30 border border-amber-800/70 rounded-xl flex items-start gap-2.5 text-xs text-amber-200">
+                    <AlertCircle className="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <div className="font-bold">Weak Placement Fit Warning</div>
+                      <p className="text-amber-300/90 mt-0.5">
+                        The top candidate score is below the 35.0 confidence threshold. Manager review or manual placement override strongly recommended.
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Banner: Close Call */}
+                {hireDetail?.assignment?.close_call && (
+                  <div className="mb-4 p-3 bg-cyan-950/30 border border-cyan-800/70 rounded-xl flex items-start gap-2.5 text-xs text-cyan-200">
+                    <Info className="w-4 h-4 text-cyan-400 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <div className="font-bold">Close Call Scoring Margin</div>
+                      <p className="text-cyan-300/90 mt-0.5">
+                        Candidate #1 and #2 scores are within 5.0 points of each other. Evaluate secondary considerations before signing off.
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Banner: Zero Capacity */}
+                {hireDetail?.assignment?.all_teams_zero_capacity && (
+                  <div className="mb-4 p-3 bg-rose-950/30 border border-rose-800/70 rounded-xl flex items-start gap-2.5 text-xs text-rose-200">
+                    <AlertTriangle className="w-4 h-4 text-rose-400 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <div className="font-bold">Zero Capacity Warning</div>
+                      <p className="text-rose-300/90 mt-0.5">
+                        All teams are currently at maximum capacity load. Capacity terms penalize placement across all candidates.
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Loading Skeleton */}
+                {hireDetail?.steps?.assignment?.status === 'running' && (
+                  <div className="space-y-4 animate-pulse">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                      {[1, 2, 3].map((n) => (
+                        <div key={n} className="bg-slate-950/50 border border-slate-800/80 rounded-xl p-4 space-y-3">
+                          <div className="h-4 bg-slate-800 rounded w-1/3"></div>
+                          <div className="h-5 bg-slate-800 rounded w-2/3"></div>
+                          <div className="h-3 bg-slate-800 rounded w-1/2"></div>
+                          <div className="space-y-2 pt-2">
+                            <div className="h-2 bg-slate-800 rounded"></div>
+                            <div className="h-2 bg-slate-800 rounded"></div>
+                            <div className="h-2 bg-slate-800 rounded"></div>
+                            <div className="h-2 bg-slate-800 rounded"></div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="h-24 bg-slate-950/50 border border-slate-800 rounded-xl"></div>
+                  </div>
+                )}
+
+                {/* Error / Needs Attention State */}
+                {hireDetail?.steps?.assignment?.status === 'needs_attention' && !hireDetail?.assignment?.insufficient_data && (
+                  <div className="my-4 p-4 rounded-xl border bg-rose-950/30 border-rose-800 text-rose-200 flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
+                    <div className="flex items-center gap-2.5">
+                      <AlertCircle className="w-5 h-5 text-rose-400 flex-shrink-0" />
+                      <div>
+                        <div className="font-bold text-xs">Assignment Processing Failed</div>
+                        <p className="text-[11px] text-rose-300/90 mt-0.5">
+                          {hireDetail?.steps?.assignment?.error || 'Deterministic assignment scoring paused due to an error.'}
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={handleRetryAssignment}
+                      disabled={actionInFlight}
+                      aria-label="Retry scoring calculation"
+                      className="px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-rose-900/60 hover:bg-rose-800 text-rose-100 border border-rose-700 flex items-center gap-1.5 transition disabled:opacity-50 cursor-pointer"
+                    >
+                      <RefreshCw className={`w-3.5 h-3.5 ${actionInFlight ? 'animate-spin' : ''}`} />
+                      Retry Scoring
+                    </button>
+                  </div>
+                )}
+
+                {/* Candidate Cards & Rationale */}
+                {hireDetail?.assignment && hireDetail.assignment.candidates && hireDetail.assignment.candidates.length > 0 ? (
                   <div className="space-y-4">
                     {/* Top 3 Scored Candidates */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                       {hireDetail.assignment.candidates.map((cand, idx) => {
                         const isSelected = cand.team === hireDetail.assignment.team;
+                        
+                        // Term values and contributions
+                        const cMatch = Number(((cand.terms?.skill_match?.contribution ?? 0) * 100).toFixed(1));
+                        const cGap = Number(((cand.terms?.gap_coverage?.contribution ?? 0) * 100).toFixed(1));
+                        const cCap = Number(((cand.terms?.capacity?.contribution ?? 0) * 100).toFixed(1));
+                        const cLearn = Number(((cand.terms?.learning_gap?.contribution ?? 0) * 100).toFixed(1));
+                        
+                        // The UI score shown must equal the sum of the visible term contributions
+                        const visibleScore = (cMatch + cGap + cCap + cLearn).toFixed(1);
+
+                        const vMatchPct = Number(((cand.terms?.skill_match?.value ?? cand.score_breakdown?.skill_match ?? 0) * 100).toFixed(1));
+                        const vGapPct = Number(((cand.terms?.gap_coverage?.value ?? cand.score_breakdown?.gap_coverage ?? 0) * 100).toFixed(1));
+                        const vCapPct = Number(((cand.terms?.capacity?.value ?? cand.score_breakdown?.capacity ?? 0) * 100).toFixed(1));
+                        const vLearnPct = Number(((cand.terms?.learning_gap?.value ?? cand.score_breakdown?.learning_gap ?? 0) * 100).toFixed(1));
+
                         return (
                           <div
                             key={idx}
-                            className={`p-3.5 rounded-xl border transition ${
+                            className={`p-3.5 rounded-xl border flex flex-col justify-between transition ${
                               isSelected
-                                ? 'bg-indigo-950/30 border-indigo-500/60 shadow-md shadow-indigo-950/50'
-                                : 'bg-slate-950/40 border-slate-800/80 opacity-80'
+                                ? 'bg-indigo-950/30 border-indigo-500/70 shadow-lg shadow-indigo-950/60 ring-1 ring-indigo-500/30'
+                                : 'bg-slate-950/40 border-slate-800/80 opacity-85 hover:opacity-100'
                             }`}
                           >
-                            <div className="flex items-center justify-between mb-1">
-                              <span className="text-[11px] font-bold text-slate-400">Rank #{idx + 1}</span>
-                              <span className="text-xs font-mono font-bold text-indigo-400">
-                                Score: {cand.score_breakdown.total_score}
-                              </span>
-                            </div>
-                            <h4 className="font-bold text-sm text-white">{cand.team}</h4>
-                            <p className="text-xs text-slate-400 line-clamp-1 mb-2">Project: {cand.project}</p>
-
-                            {/* Score Breakdown Bars */}
-                            <div className="space-y-1.5 text-[10px]">
-                              <div>
-                                <div className="flex justify-between text-slate-400">
-                                  <span>Skill Match (40%)</span>
-                                  <span>{Math.round(cand.score_breakdown.skill_match * 100)}%</span>
+                            <div>
+                              <div className="flex items-center justify-between mb-1.5">
+                                <div className="flex items-center gap-1.5">
+                                  <span className="text-[11px] font-bold text-slate-400">
+                                    Rank #{idx + 1}
+                                  </span>
+                                  {idx === 0 && (
+                                    <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-indigo-900/60 text-indigo-300 border border-indigo-700/60">
+                                      Top Pick
+                                    </span>
+                                  )}
                                 </div>
-                                <div className="w-full bg-slate-800 h-1 rounded-full overflow-hidden">
-                                  <div className="bg-indigo-500 h-1 rounded-full" style={{ width: `${cand.score_breakdown.skill_match * 100}%` }}></div>
+                                <div className="flex items-center gap-1.5">
+                                  {cand.label && getStrengthBadge(cand.label)}
+                                  <span className="text-xs font-mono font-bold text-indigo-400" aria-label={`Score: ${visibleScore} out of 100`}>
+                                    {visibleScore}
+                                  </span>
+                                </div>
+                              </div>
+
+                              <h4 className="font-bold text-sm text-white">{cand.team}</h4>
+                              <p className="text-xs text-slate-400 line-clamp-1 mb-2.5">
+                                Project: <span className="text-slate-300">{cand.project}</span>
+                              </p>
+
+                              {/* Score Breakdown Bars (4 Terms) */}
+                              <div className="space-y-2 text-[10px]">
+                                {/* Term 1: Skill Match (45%) */}
+                                <div>
+                                  <div className="flex justify-between items-center text-slate-300 mb-0.5">
+                                    <span>Skill Match (w: 0.45)</span>
+                                    <span className="font-mono font-bold text-indigo-400">
+                                      +{cMatch.toFixed(1)} pts ({vMatchPct}%)
+                                    </span>
+                                  </div>
+                                  <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden" role="progressbar" aria-valuenow={vMatchPct} aria-valuemin="0" aria-valuemax="100" aria-label="Skill match progress">
+                                    <div className="bg-indigo-500 h-1.5 rounded-full" style={{ width: `${Math.min(100, Math.max(0, vMatchPct))}%` }}></div>
+                                  </div>
+                                </div>
+
+                                {/* Term 2: Gap Coverage (30%) */}
+                                <div>
+                                  <div className="flex justify-between items-center text-slate-300 mb-0.5">
+                                    <span>Gap Coverage (w: 0.30)</span>
+                                    <span className="font-mono font-bold text-sky-400">
+                                      +{cGap.toFixed(1)} pts ({vGapPct}%)
+                                    </span>
+                                  </div>
+                                  <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden" role="progressbar" aria-valuenow={vGapPct} aria-valuemin="0" aria-valuemax="100" aria-label="Gap coverage progress">
+                                    <div className="bg-sky-500 h-1.5 rounded-full" style={{ width: `${Math.min(100, Math.max(0, vGapPct))}%` }}></div>
+                                  </div>
+                                </div>
+
+                                {/* Term 3: Available Capacity (25%) */}
+                                <div>
+                                  <div className="flex justify-between items-center text-slate-300 mb-0.5">
+                                    <span>Available Capacity (w: 0.25)</span>
+                                    <span className="font-mono font-bold text-emerald-400">
+                                      +{cCap.toFixed(1)} pts ({vCapPct}%)
+                                    </span>
+                                  </div>
+                                  <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden" role="progressbar" aria-valuenow={vCapPct} aria-valuemin="0" aria-valuemax="100" aria-label="Capacity progress">
+                                    <div className="bg-emerald-500 h-1.5 rounded-full" style={{ width: `${Math.min(100, Math.max(0, vCapPct))}%` }}></div>
+                                  </div>
+                                </div>
+
+                                {/* Term 4: Learning Gap Penalty (15% in RED) */}
+                                <div>
+                                  <div className="flex justify-between items-center text-slate-300 mb-0.5">
+                                    <span className="text-rose-400">Learning Gap Penalty (w: 0.15)</span>
+                                    <span className="font-mono font-bold text-rose-400">
+                                      {cLearn <= 0 ? cLearn.toFixed(1) : '-' + cLearn.toFixed(1)} pts ({vLearnPct}%)
+                                    </span>
+                                  </div>
+                                  <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden" role="progressbar" aria-valuenow={vLearnPct} aria-valuemin="0" aria-valuemax="100" aria-label="Learning gap penalty">
+                                    <div className="bg-rose-500 h-1.5 rounded-full" style={{ width: `${Math.min(100, Math.max(0, vLearnPct))}%` }}></div>
+                                  </div>
                                 </div>
                               </div>
 
-                              <div>
-                                <div className="flex justify-between text-slate-400">
-                                  <span>Available Capacity (20%)</span>
-                                  <span>{Math.round(cand.score_breakdown.capacity * 100)}%</span>
+                              {/* Matched Skills Chips */}
+                              {cand.matched_skills && cand.matched_skills.length > 0 && (
+                                <div className="mt-2.5 pt-2 border-t border-slate-800/80">
+                                  <span className="text-[10px] uppercase font-bold text-slate-400 block mb-1">
+                                    Matched Skills:
+                                  </span>
+                                  <div className="flex flex-wrap gap-1">
+                                    {cand.matched_skills.map((m, mIdx) => {
+                                      const isVerified = m.status === 'verified';
+                                      return (
+                                        <span
+                                          key={mIdx}
+                                          className={`px-1.5 py-0.5 rounded text-[10px] font-medium border flex items-center gap-1 ${
+                                            isVerified
+                                              ? 'bg-emerald-950/60 border-emerald-700/60 text-emerald-300'
+                                              : 'bg-sky-950/60 border-sky-700/60 text-sky-300'
+                                          }`}
+                                        >
+                                          {isVerified ? (
+                                            <CheckCircle2 className="w-2.5 h-2.5 text-emerald-400" />
+                                          ) : (
+                                            <span className="w-1.5 h-1.5 rounded-full bg-sky-400"></span>
+                                          )}
+                                          <span>{m.skill}</span>
+                                          <span className="text-[9px] opacity-75">
+                                            ({isVerified ? 'verified' : 'claimed'})
+                                          </span>
+                                        </span>
+                                      );
+                                    })}
+                                  </div>
                                 </div>
-                                <div className="w-full bg-slate-800 h-1 rounded-full overflow-hidden">
-                                  <div className="bg-cyan-500 h-1 rounded-full" style={{ width: `${cand.score_breakdown.capacity * 100}%` }}></div>
+                              )}
+
+                              {/* Missing Skills Chips */}
+                              {cand.missing_skills && cand.missing_skills.length > 0 && (
+                                <div className="mt-2">
+                                  <span className="text-[10px] uppercase font-bold text-slate-400 block mb-1">
+                                    Missing Skills to Learn:
+                                  </span>
+                                  <div className="flex flex-wrap gap-1">
+                                    {cand.missing_skills.map((s, sIdx) => (
+                                      <span
+                                        key={sIdx}
+                                        className="px-1.5 py-0.5 rounded text-[10px] font-medium border bg-rose-950/40 border-rose-800/60 text-rose-300 flex items-center gap-1"
+                                      >
+                                        <span className="w-1 h-1 rounded-full bg-rose-400"></span>
+                                        {s}
+                                      </span>
+                                    ))}
+                                  </div>
                                 </div>
-                              </div>
+                              )}
                             </div>
+
+                            {/* Expandable "How this was computed" */}
+                            {cand.formula_trace && (
+                              <details className="mt-3 text-[10px] border-t border-slate-800/80 pt-1.5">
+                                <summary className="text-indigo-400 hover:text-indigo-300 cursor-pointer flex items-center gap-1 font-medium select-none focus:outline-none focus:ring-1 focus:ring-indigo-500 rounded px-1 py-0.5">
+                                  <HelpCircle className="w-3 h-3 text-indigo-400" />
+                                  <span>How this was computed</span>
+                                </summary>
+                                <div className="mt-1.5 p-2 bg-slate-950/95 rounded border border-slate-800 font-mono text-[9px] text-slate-300 overflow-x-auto whitespace-pre-wrap leading-relaxed">
+                                  {cand.formula_trace}
+                                </div>
+                              </details>
+                            )}
                           </div>
                         );
                       })}
                     </div>
 
-                    {/* LLM Strategic Rationale */}
-                    <div className="bg-slate-950/60 p-4 rounded-xl border border-slate-800">
-                      <div className="flex items-center gap-1.5 text-xs font-semibold text-indigo-300 mb-1">
-                        <Sparkles className="w-3.5 h-3.5" /> LLM Strategic Placement Rationale
+                    {/* Structured LLM Strategic Rationale */}
+                    <div className="bg-slate-950/70 p-4 rounded-xl border border-slate-800 space-y-3">
+                      <div className="flex items-center justify-between pb-2 border-b border-slate-800">
+                        <div className="flex items-center gap-1.5 text-xs font-semibold text-indigo-300">
+                          <Sparkles className="w-4 h-4 text-indigo-400" />
+                          <span>LLM Strategic Placement Rationale</span>
+                        </div>
+                        {hireDetail.assignment.structured_rationale?.fallback_rationale && (
+                          <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-amber-950 text-amber-300 border border-amber-800 flex items-center gap-1">
+                            <AlertTriangle className="w-3 h-3 text-amber-400" /> Template Fallback
+                          </span>
+                        )}
                       </div>
-                      <p className="text-xs text-slate-300 leading-relaxed">{hireDetail.assignment.reason}</p>
+
+                      <div className="space-y-2.5 text-xs">
+                        {/* Why this team */}
+                        <div>
+                          <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-0.5">
+                            Why This Team:
+                          </span>
+                          <p className="text-slate-200 leading-relaxed bg-slate-900/60 p-2.5 rounded-lg border border-slate-800/80">
+                            {hireDetail.assignment.structured_rationale?.why_this_team || hireDetail.assignment.reason}
+                          </p>
+                        </div>
+
+                        {/* Skills to learn & Risks grid */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          {/* Skills to Learn */}
+                          <div>
+                            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
+                              Skills To Learn:
+                            </span>
+                            {hireDetail.assignment.structured_rationale?.skills_to_learn && hireDetail.assignment.structured_rationale.skills_to_learn.length > 0 ? (
+                              <div className="flex flex-wrap gap-1">
+                                {hireDetail.assignment.structured_rationale.skills_to_learn.map((sk, skIdx) => (
+                                  <span key={skIdx} className="px-2 py-0.5 rounded text-[10px] font-medium bg-indigo-950/50 text-indigo-300 border border-indigo-800/60">
+                                    {sk}
+                                  </span>
+                                ))}
+                              </div>
+                            ) : (
+                              <span className="text-[11px] text-slate-500 italic">No critical skills to learn identified.</span>
+                            )}
+                          </div>
+
+                          {/* Risks */}
+                          <div>
+                            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
+                              Identified Placement Risks:
+                            </span>
+                            {hireDetail.assignment.structured_rationale?.risks && hireDetail.assignment.structured_rationale.risks.length > 0 ? (
+                              <ul className="space-y-1 text-[11px] text-amber-300/90">
+                                {hireDetail.assignment.structured_rationale.risks.map((rk, rkIdx) => (
+                                  <li key={rkIdx} className="flex items-start gap-1.5">
+                                    <AlertTriangle className="w-3 h-3 text-amber-400 flex-shrink-0 mt-0.5" />
+                                    <span>{rk}</span>
+                                  </li>
+                                ))}
+                              </ul>
+                            ) : (
+                              <span className="text-[11px] text-slate-500 italic">No significant risks flagged.</span>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Why not runner up */}
+                        {hireDetail.assignment.structured_rationale?.why_not_runner_up && (
+                          <div>
+                            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-0.5">
+                              Comparison With Runner-Up:
+                            </span>
+                            <p className="text-slate-300 text-[11px] leading-relaxed bg-slate-900/40 p-2 rounded-lg border border-slate-800/60">
+                              {hireDetail.assignment.structured_rationale.why_not_runner_up}
+                            </p>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
                 ) : (
-                  <div className="py-8 text-center text-xs text-slate-500">Awaiting deterministic scoring...</div>
+                  hireDetail?.steps?.assignment?.status !== 'running' && (
+                    <div className="py-8 text-center text-xs text-slate-500">
+                      {hireDetail?.assignment?.insufficient_data ? 'Awaiting candidate technical competencies...' : 'Awaiting deterministic scoring...'}
+                    </div>
+                  )
                 )}
               </div>
 
-              {/* Action Gate */}
-              {hireDetail?.assignment?.status === 'waiting_approval' && (
+              {/* Locked Card State after approval or override */}
+              {hireDetail?.assignment?.approved_by && (
+                <div className="mt-4 p-3.5 rounded-xl border bg-slate-950/80 border-slate-700 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Lock className="w-4 h-4 text-emerald-400" />
+                      <span className="text-xs font-bold text-white">
+                        {hireDetail.assignment.overridden
+                          ? `Overridden by ${hireDetail.assignment.approved_by} at ${hireDetail.assignment.approved_at || 'Recorded Time'}: ${hireDetail.assignment.override_reason || hireDetail.assignment.reason}`
+                          : `Approved by ${hireDetail.assignment.approved_by} at ${hireDetail.assignment.approved_at || 'Recorded Time'}`}
+                      </span>
+                    </div>
+                    <span className="px-2 py-0.5 text-[10px] font-bold rounded bg-emerald-950 text-emerald-400 border border-emerald-800">
+                      LOCKED
+                    </span>
+                  </div>
+
+                  {hireDetail.assignment.overridden && (
+                    <div className="text-[11px] text-slate-300 flex items-center gap-2 bg-slate-900/60 px-2.5 py-1.5 rounded border border-slate-800">
+                      <span className="text-slate-400">Placement Change:</span>
+                      <span className="font-semibold text-amber-300">
+                        {hireDetail.assignment.recommended_team || 'Recommended'} ({hireDetail.assignment.recommended_score != null ? Number(hireDetail.assignment.recommended_score).toFixed(1) : 'N/A'})
+                      </span>
+                      <ChevronRight className="w-3.5 h-3.5 text-slate-500" />
+                      <span className="font-semibold text-emerald-300">
+                        {hireDetail.assignment.chosen_team || hireDetail.assignment.team} ({hireDetail.assignment.chosen_score != null ? Number(hireDetail.assignment.chosen_score).toFixed(1) : 'N/A'})
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Handoff Complete Indicator */}
+                  <div className="text-xs text-indigo-300 flex items-center gap-1.5 pt-1 border-t border-slate-800/80">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-indigo-400" />
+                    <span>Handoff complete: Guide Manager triggered for {hireDetail.assignment.chosen_team || hireDetail.assignment.team} Platform.</span>
+                  </div>
+                </div>
+              )}
+
+              {/* Action Gate (waiting_approval) */}
+              {hireDetail?.assignment?.status === 'waiting_approval' && !hireDetail?.assignment?.approved_by && (
                 <div className="mt-4 pt-4 border-t border-slate-800 flex items-center justify-between">
                   <span className="text-xs text-amber-400 font-medium flex items-center gap-1">
                     <Lock className="w-3.5 h-3.5" /> Manager Approval Required
@@ -555,15 +957,20 @@ Contact: +1-555-0199, 123 Tech Lane, San Francisco CA, john.personal@gmail.com, 
                   <div className="flex items-center gap-2">
                     <button
                       onClick={() => setShowOverrideModal(true)}
-                      className="px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition"
+                      disabled={actionInFlight}
+                      aria-label="Open override placement dialog"
+                      className="px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition disabled:opacity-50 cursor-pointer"
                     >
                       Override Placement
                     </button>
                     <button
                       onClick={() => handleApproveStep('assignment')}
-                      className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white shadow-sm transition"
+                      disabled={actionInFlight}
+                      aria-label="Approve candidate assignment"
+                      className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white shadow-sm transition disabled:opacity-50 cursor-pointer"
                     >
-                      <Check className="w-3.5 h-3.5" /> Approve Assignment
+                      <Check className="w-3.5 h-3.5" />
+                      {actionInFlight ? 'Processing...' : 'Approve Assignment'}
                     </button>
                   </div>
                 </div>
@@ -790,61 +1197,116 @@ Contact: +1-555-0199, 123 Tech Lane, San Francisco CA, john.personal@gmail.com, 
 
       {/* MODAL: OVERRIDE ASSIGNMENT */}
       {showOverrideModal && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="override-title"
+          className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+        >
           <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl">
             <div className="flex items-center justify-between pb-2 border-b border-slate-800">
-              <h3 className="text-base font-bold text-white">Override Placement Decision</h3>
-              <button onClick={() => setShowOverrideModal(false)} className="text-slate-400 hover:text-white">
+              <h3 id="override-title" className="text-base font-bold text-white">Override Placement Decision</h3>
+              <button
+                onClick={() => setShowOverrideModal(false)}
+                aria-label="Close override dialog"
+                className="text-slate-400 hover:text-white"
+              >
                 <X className="w-5 h-5" />
               </button>
             </div>
             <form onSubmit={handleOverrideSubmit} className="space-y-3 text-xs">
               <div>
-                <label className="block text-slate-300 font-semibold mb-1">Target Team</label>
+                <label htmlFor="override-team-select" className="block text-slate-300 font-semibold mb-1">Target Team</label>
                 <select
+                  id="override-team-select"
                   value={overrideData.team}
-                  onChange={(e) => setOverrideData({ ...overrideData, team: e.target.value })}
-                  className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-white"
+                  onChange={(e) => {
+                    const selTeam = e.target.value;
+                    const teamProjs = seedOptions.projects?.filter(p => p.team === selTeam) || [];
+                    const defaultP = teamProjs.length > 0 ? teamProjs[0].name : '';
+                    setOverrideData({
+                      ...overrideData,
+                      team: selTeam,
+                      project: defaultP || overrideData.project
+                    });
+                  }}
+                  className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-white focus:outline-none focus:ring-1 focus:ring-indigo-500"
                 >
-                  <option value="Backend Platform">Backend Platform</option>
-                  <option value="Frontend Platform">Frontend Platform</option>
-                  <option value="Data & ML Platform">Data & ML Platform</option>
-                  <option value="DevOps & Infrastructure">DevOps & Infrastructure</option>
-                  <option value="Mobile Platform">Mobile Platform</option>
+                  {seedOptions.teams && seedOptions.teams.length > 0 ? (
+                    seedOptions.teams.map((t) => (
+                      <option key={t.name} value={t.name}>{t.name} (Cap: {t.capacity - (t.current_load || 0)} available)</option>
+                    ))
+                  ) : (
+                    <>
+                      <option value="Backend Platform">Backend Platform</option>
+                      <option value="Frontend Platform">Frontend Platform</option>
+                      <option value="Data & ML Platform">Data & ML Platform</option>
+                      <option value="DevOps & Infrastructure">DevOps & Infrastructure</option>
+                      <option value="Mobile Platform">Mobile Platform</option>
+                    </>
+                  )}
                 </select>
               </div>
+
               <div>
-                <label className="block text-slate-300 font-semibold mb-1">Assigned Project</label>
-                <input
-                  type="text"
+                <label htmlFor="override-project-select" className="block text-slate-300 font-semibold mb-1">Assigned Project</label>
+                <select
+                  id="override-project-select"
                   value={overrideData.project}
                   onChange={(e) => setOverrideData({ ...overrideData, project: e.target.value })}
-                  className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-white"
-                />
+                  className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-white focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                >
+                  {seedOptions.projects && seedOptions.projects.length > 0 ? (
+                    seedOptions.projects
+                      .filter(p => !overrideData.team || p.team === overrideData.team)
+                      .map((p) => (
+                        <option key={p.name} value={p.name}>{p.name} [{p.difficulty}]</option>
+                      ))
+                  ) : (
+                    <option value={overrideData.project}>{overrideData.project}</option>
+                  )}
+                </select>
               </div>
+
               <div>
-                <label className="block text-slate-300 font-semibold mb-1">Manager Justification (Audited)</label>
+                <div className="flex justify-between items-center mb-1">
+                  <label htmlFor="override-reason-text" className="block text-slate-300 font-semibold">
+                    Manager Justification (Audited)
+                  </label>
+                  <span className={`text-[10px] font-mono ${overrideData.reason.trim().length >= 10 ? 'text-emerald-400' : 'text-amber-400'}`}>
+                    {overrideData.reason.trim().length} / 10 chars (min 10)
+                  </span>
+                </div>
                 <textarea
+                  id="override-reason-text"
                   rows={3}
                   required
+                  placeholder="Provide explicit operational justification for overriding deterministic placement (min 10 chars)..."
                   value={overrideData.reason}
                   onChange={(e) => setOverrideData({ ...overrideData, reason: e.target.value })}
-                  className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-white"
+                  className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-white focus:outline-none focus:ring-1 focus:ring-indigo-500"
                 />
+                {overrideData.reason.trim().length < 10 && (
+                  <p className="text-[10px] text-amber-400/90 mt-1">
+                    Justification must be at least 10 characters long.
+                  </p>
+                )}
               </div>
+
               <div className="flex justify-end gap-2 pt-2 border-t border-slate-800">
                 <button
                   type="button"
                   onClick={() => setShowOverrideModal(false)}
-                  className="px-3 py-1.5 rounded-lg bg-slate-800 text-slate-300"
+                  className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-500 text-white font-semibold"
+                  disabled={overrideData.reason.trim().length < 10 || actionInFlight}
+                  className="px-4 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-500 text-white font-semibold disabled:opacity-40 disabled:cursor-not-allowed transition"
                 >
-                  Confirm Override
+                  {actionInFlight ? 'Saving...' : 'Confirm Override'}
                 </button>
               </div>
             </form>

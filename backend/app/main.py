@@ -314,6 +314,25 @@ def override_assignment(id: str, req: OverrideAssignmentRequest, db: Session = D
     res = orchestrator.override_assignment_step(db, id, req.manager_name, req.team, req.project, req.reason)
     return {"status": "overridden", "team": res.team, "project": res.project, "reason": res.reason}
 
+@app.post("/hires/{id}/retry/{step}")
+def retry_step(id: str, step: str, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
+    """Retries a step that is in needs_attention or error state."""
+    emp = db.query(EmployeeModel).filter(EmployeeModel.id == id).first()
+    if not emp:
+        raise HTTPException(status_code=404, detail="Hire not found")
+
+    if step == "assignment":
+        def run_retry(hire_id: str):
+            with next(get_db()) as bg_db:
+                try:
+                    orchestrator.run_assignment_step(bg_db, hire_id)
+                except Exception as e:
+                    logger.error(f"Error retrying assignment step for {hire_id}: {e}")
+        background_tasks.add_task(run_retry, id)
+        return {"status": "retrying", "step": "assignment"}
+    else:
+        raise HTTPException(status_code=400, detail=f"Unsupported retry step '{step}'")
+
 @app.get("/options/teams-and-projects")
 def get_teams_and_projects():
     """Returns available teams and starter projects for placement override."""
