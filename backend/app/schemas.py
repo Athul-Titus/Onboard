@@ -187,3 +187,48 @@ class HireDetailResponse(BaseModel):
     guide: Optional[Guide] = None
     audit_logs: List[AuditEntry] = Field(default_factory=list)
     redaction_summary: Optional[RedactionSummary] = None
+
+# 9. Team Management & Roster Schemas
+class TeamCreateRequest(BaseModel):
+    name: str
+    description: Optional[str] = ""
+    required_skills: List[str] = Field(default_factory=list)
+    capacity: int = 5
+    current_load: int = 0
+
+class TeamUpdateRequest(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+    required_skills: Optional[List[str]] = None
+    capacity: Optional[int] = None
+    current_load: Optional[int] = None
+
+class HireRoleUpdateRequest(BaseModel):
+    role: str
+
+class IdentityEmailUpdateRequest(BaseModel):
+    email: str
+    manager_name: Optional[str] = "Marcus Vance (Engineering Lead)"
+
+class RosterMember(BaseModel):
+    id: str
+    name: str
+    role: str
+    email: Optional[str] = None
+    project: Optional[str] = None
+    status: str = "queued"
+    step_status: Dict[str, str] = Field(default_factory=dict)
+
+class TeamRoster(BaseModel):
+    team: str
+    description: Optional[str] = ""
+    capacity: int
+    current_load: int
+    required_skills: List[str] = Field(default_factory=list)
+    members: List[RosterMember] = Field(default_factory=list)
+
+class RosterOverviewResponse(BaseModel):
+    teams: List[TeamRoster] = Field(default_factory=list)
+    unassigned: List[RosterMember] = Field(default_factory=list)
+    total_hires: int = 0
+    total_assigned: int = 0

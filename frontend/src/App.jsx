@@ -26,7 +26,15 @@ import {
   UploadCloud,
   FileCheck,
   FlaskConical,
-  Trash2
+  Trash2,
+  Edit2,
+  Users,
+  Sparkles,
+  Settings,
+  Plus,
+  RotateCw,
+  Building2,
+  Briefcase
 } from 'lucide-react';
 
 const API_BASE = 'http://localhost:8000';
@@ -41,6 +49,30 @@ export default function App() {
   const [citationModal, setCitationModal] = useState(null);
   const [skillEvidenceModal, setSkillEvidenceModal] = useState(null);
   const [activeTab, setActiveTab] = useState('workflow'); // 'workflow' | 'skills' | 'guide' | 'audit'
+
+  // Email & Role Editing State
+  const [isEditingEmail, setIsEditingEmail] = useState(false);
+  const [editedEmailValue, setEditedEmailValue] = useState('');
+  const [isEditingRole, setIsEditingRole] = useState(false);
+  const [editedRoleValue, setEditedRoleValue] = useState('');
+
+  // Teams & Roles Directory State
+  const [showTeamsModal, setShowTeamsModal] = useState(false);
+  const [teamsList, setTeamsList] = useState([]);
+  const [isAddingTeam, setIsAddingTeam] = useState(false);
+  const [editingTeamIndex, setEditingTeamIndex] = useState(null);
+  const [newTeamData, setNewTeamData] = useState({
+    name: '',
+    description: '',
+    required_skills: '',
+    capacity: 5
+  });
+
+  // Team Roster & Placements State
+  const [showRosterModal, setShowRosterModal] = useState(false);
+  const [rosterData, setRosterData] = useState(null);
+  const [rosterFilter, setRosterFilter] = useState('all');
+  const [loadingRoster, setLoadingRoster] = useState(false);
 
   // Audit Log UI state
   const [auditAgentFilter, setAuditAgentFilter] = useState('all');
@@ -355,6 +387,178 @@ Contact: +1 (555) 987-1234, 88 Mission Boulevard, Seattle WA, elena.rostova@outl
     }
   };
 
+  // Clean duplicates and unwanted test runs
+  const handleCleanDuplicates = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/hires/clean-duplicates`, { method: 'POST' });
+      if (res.ok) {
+        const data = await res.json();
+        alert(`Deduplication completed! Removed ${data.deleted_count} duplicate/unwanted runs. ${data.remaining_count} unique candidates active.`);
+        await fetchHires();
+      }
+    } catch (err) {
+      alert('Error cleaning duplicates: ' + err.message);
+    }
+  };
+
+  // Fetch teams & roles directory
+  const fetchTeams = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/teams`);
+      if (res.ok) {
+        const data = await res.json();
+        setTeamsList(data);
+      }
+    } catch (err) {
+      console.error('Error fetching teams:', err);
+    }
+  };
+
+  // Fetch team roster
+  const fetchRoster = async () => {
+    setLoadingRoster(true);
+    try {
+      const res = await fetch(`${API_BASE}/roster`);
+      if (res.ok) {
+        const data = await res.json();
+        setRosterData(data);
+      }
+    } catch (err) {
+      console.error('Error fetching roster:', err);
+    } finally {
+      setLoadingRoster(false);
+    }
+  };
+
+  // Save edited corporate email (before or after approval)
+  const handleSaveEditedEmail = async () => {
+    if (!selectedHireId || !editedEmailValue.trim()) return;
+    try {
+      const email = editedEmailValue.trim().toLowerCase();
+      if (hireDetail?.identity?.status === 'waiting_approval') {
+        await handleApproveStep('identity', email);
+      } else {
+        const res = await fetch(`${API_BASE}/hires/${selectedHireId}/identity/email`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: email,
+            manager_name: 'Marcus Vance (Engineering Lead)'
+          })
+        });
+        if (!res.ok) {
+          const err = await res.json();
+          throw new Error(err.detail || 'Failed to update email');
+        }
+        await fetchHireDetail(selectedHireId);
+        await fetchHires();
+      }
+      setIsEditingEmail(false);
+    } catch (err) {
+      alert('Error updating email: ' + err.message);
+    }
+  };
+
+  // Save edited candidate role
+  const handleSaveEditedRole = async () => {
+    if (!selectedHireId || !editedRoleValue.trim()) return;
+    try {
+      const res = await fetch(`${API_BASE}/hires/${selectedHireId}/role`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ role: editedRoleValue.trim() })
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.detail || 'Failed to update role');
+      }
+      setIsEditingRole(false);
+      await fetchHireDetail(selectedHireId);
+      await fetchHires();
+    } catch (err) {
+      alert('Error updating role: ' + err.message);
+    }
+  };
+
+  // Recalculate deterministic placement
+  const handleRecalculateAssignment = async () => {
+    if (!selectedHireId) return;
+    try {
+      const res = await fetch(`${API_BASE}/hires/${selectedHireId}/recalculate-assignment`, {
+        method: 'POST'
+      });
+      if (res.ok) {
+        await fetchHireDetail(selectedHireId);
+        await fetchHires();
+        alert('Deterministic placement recalculated successfully!');
+      }
+    } catch (err) {
+      alert('Error recalculating placement: ' + err.message);
+    }
+  };
+
+  // Team directory management handlers
+  const handleCreateTeam = async (e) => {
+    e.preventDefault();
+    if (!newTeamData.name.trim()) return;
+    try {
+      const skillsArray = newTeamData.required_skills.split(',').map(s => s.trim()).filter(Boolean);
+      const res = await fetch(`${API_BASE}/teams`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: newTeamData.name.trim(),
+          description: newTeamData.description.trim(),
+          required_skills: skillsArray,
+          capacity: parseInt(newTeamData.capacity) || 5
+        })
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.detail || 'Failed to create team');
+      }
+      await fetchTeams();
+      setIsAddingTeam(false);
+      setNewTeamData({ name: '', description: '', required_skills: '', capacity: 5 });
+    } catch (err) {
+      alert('Error creating team: ' + err.message);
+    }
+  };
+
+  const handleUpdateTeam = async (teamName, updatedPayload) => {
+    try {
+      const res = await fetch(`${API_BASE}/teams/${encodeURIComponent(teamName)}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updatedPayload)
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.detail || 'Failed to update team');
+      }
+      await fetchTeams();
+      setEditingTeamIndex(null);
+    } catch (err) {
+      alert('Error updating team: ' + err.message);
+    }
+  };
+
+  const handleDeleteTeam = async (teamName) => {
+    if (!confirm(`Are you sure you want to delete the '${teamName}' team from the directory?`)) return;
+    try {
+      const res = await fetch(`${API_BASE}/teams/${encodeURIComponent(teamName)}`, {
+        method: 'DELETE'
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.detail || 'Failed to delete team');
+      }
+      await fetchTeams();
+    } catch (err) {
+      alert('Error deleting team: ' + err.message);
+    }
+  };
+
   // Override assignment
   const handleOverrideSubmit = async (e) => {
     e.preventDefault();
@@ -528,37 +732,52 @@ Contact: +1 (555) 987-1234, 88 Mission Boulevard, Seattle WA, elena.rostova@outl
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2.5">
           {hires.length > 0 && (
             <div className="flex items-center gap-1.5">
               <select
                 value={selectedHireId || ''}
                 onChange={(e) => setSelectedHireId(e.target.value)}
-                className="bg-slate-900 border border-slate-700 text-sm rounded-lg px-3 py-1.5 text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 max-w-[280px] truncate"
+                className="bg-slate-900 border border-slate-700 text-xs font-medium rounded-lg px-3 py-1.5 text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 max-w-[260px] truncate"
               >
-                {hires.map((h) => {
-                  const time = h.created_at
-                    ? new Date(h.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-                    : '';
-                  return (
-                    <option key={h.id} value={h.id}>
-                      {h.name} ({h.role}) - {h.status} {time ? `[${time}]` : ''}
-                    </option>
-                  );
-                })}
+                {hires.map((h) => (
+                  <option key={h.id} value={h.id}>
+                    {h.name} • {h.role} ({h.status})
+                  </option>
+                ))}
               </select>
               {selectedHireId && (
                 <button
                   type="button"
                   onClick={(e) => handleDeleteHire(e, selectedHireId)}
-                  title="Delete this hire record"
+                  title="Delete this candidate record"
                   className="p-1.5 rounded-lg text-slate-400 hover:text-red-400 hover:bg-slate-800 border border-slate-700/60 transition"
                 >
-                  <Trash2 className="w-4 h-4" />
+                  <Trash2 className="w-3.5 h-3.5" />
                 </button>
               )}
+              <button
+                type="button"
+                onClick={handleCleanDuplicates}
+                title="Purge duplicate runs and broken test records"
+                className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-slate-900 hover:bg-slate-800 text-amber-300 border border-slate-700/60 transition"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                <span className="hidden sm:inline">Clean Duplicates</span>
+              </button>
             </div>
           )}
+
+          <button
+            onClick={() => {
+              fetchRoster();
+              setShowRosterModal(true);
+            }}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-950/70 hover:bg-indigo-900 text-indigo-300 border border-indigo-700/60 transition shadow-sm"
+          >
+            <Users className="w-3.5 h-3.5 text-indigo-400" />
+            Team Roster
+          </button>
 
           <button
             onClick={handleExport}
@@ -713,17 +932,70 @@ Contact: +1 (555) 987-1234, 88 Mission Boulevard, Seattle WA, elena.rostova@outl
 
                 {hireDetail?.identity ? (
                   <div className="space-y-3">
-                    <div className="bg-slate-950/70 p-3 rounded-xl border border-slate-800">
-                      <div className="text-xs text-slate-400">Proposed Corporate Email:</div>
-                      <div className="text-base font-mono font-bold text-indigo-300 mt-0.5">
-                        {hireDetail.identity.proposed_email}
+                    <div className="bg-slate-950/70 p-3.5 rounded-xl border border-slate-800">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-xs text-slate-400">Proposed Corporate Email:</span>
+                        {!isEditingEmail && (
+                          <button
+                            onClick={() => {
+                              setEditedEmailValue(hireDetail.identity.proposed_email);
+                              setIsEditingEmail(true);
+                            }}
+                            className="text-xs text-indigo-400 hover:text-indigo-300 flex items-center gap-1 font-medium px-2 py-0.5 rounded hover:bg-slate-900 border border-transparent hover:border-slate-800 transition"
+                          >
+                            <Edit2 className="w-3 h-3" /> Edit Email
+                          </button>
+                        )}
                       </div>
-                      <div className="text-xs text-slate-400 mt-1 flex items-center justify-between">
-                        <span>Rule: <code className="text-slate-200">{hireDetail.identity.rule_used}</code></span>
-                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 font-mono">
-                          MOCK DIRECTORY
-                        </span>
-                      </div>
+
+                      {isEditingEmail ? (
+                        <div className="mt-2 space-y-2.5">
+                          <div>
+                            <input
+                              type="email"
+                              value={editedEmailValue}
+                              onChange={(e) => setEditedEmailValue(e.target.value)}
+                              placeholder="e.g. firstname.lastname@company.com"
+                              className="w-full bg-slate-900 border border-indigo-500 rounded-lg p-2 text-sm font-mono text-indigo-300 focus:outline-none focus:ring-1 focus:ring-indigo-400"
+                            />
+                            <p className="text-[11px] text-slate-400 mt-1">
+                              Recruiter custom email override. Format: <code className="text-indigo-400">username@company.com</code>
+                            </p>
+                          </div>
+                          <div className="flex items-center justify-end gap-2">
+                            <button
+                              onClick={() => setIsEditingEmail(false)}
+                              className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs transition"
+                            >
+                              Cancel
+                            </button>
+                            <button
+                              onClick={handleSaveEditedEmail}
+                              className="px-3 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold flex items-center gap-1 shadow-sm transition"
+                            >
+                              <Check className="w-3.5 h-3.5" />
+                              {hireDetail.identity.status === 'waiting_approval' ? 'Save & Provision' : 'Update Email'}
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          <div className="text-base font-mono font-bold text-indigo-300 mt-0.5 flex items-center justify-between">
+                            <span>{hireDetail.identity.proposed_email}</span>
+                            {hireDetail.identity.account_created && (
+                              <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-950 text-emerald-400 border border-emerald-800 font-sans font-semibold">
+                                ✓ Provisioned
+                              </span>
+                            )}
+                          </div>
+                          <div className="text-xs text-slate-400 mt-1.5 flex items-center justify-between">
+                            <span>Rule: <code className="text-slate-200">{hireDetail.identity.rule_used}</code></span>
+                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 font-mono">
+                              MOCK DIRECTORY
+                            </span>
+                          </div>
+                        </>
+                      )}
                     </div>
 
                     {/* Collision resolution indicator */}
@@ -756,16 +1028,27 @@ Contact: +1 (555) 987-1234, 88 Mission Boulevard, Seattle WA, elena.rostova@outl
 
               {/* Action Gate */}
               {hireDetail?.identity?.status === 'waiting_approval' && (
-                <div className="mt-4 pt-4 border-t border-slate-800 flex items-center justify-between">
+                <div className="mt-4 pt-4 border-t border-slate-800 flex flex-wrap items-center justify-between gap-2">
                   <span className="text-xs text-amber-400 font-medium flex items-center gap-1">
-                    <Lock className="w-3.5 h-3.5" /> Manager Approval Required
+                    <Lock className="w-3.5 h-3.5" /> Approval Required
                   </span>
-                  <button
-                    onClick={() => handleApproveStep('identity')}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white shadow-sm transition"
-                  >
-                    <Check className="w-3.5 h-3.5" /> Approve & Provision
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => {
+                        setEditedEmailValue(hireDetail.identity.proposed_email);
+                        setIsEditingEmail(true);
+                      }}
+                      className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-indigo-300 border border-slate-700 transition"
+                    >
+                      <Edit2 className="w-3.5 h-3.5" /> Edit Email
+                    </button>
+                    <button
+                      onClick={() => handleApproveStep('identity')}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white shadow-sm transition"
+                    >
+                      <Check className="w-3.5 h-3.5" /> Approve Suggested
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
@@ -872,6 +1155,85 @@ Contact: +1 (555) 987-1234, 88 Mission Boulevard, Seattle WA, elena.rostova@outl
                         Manager Override
                       </span>
                     )}
+                  </div>
+                </div>
+
+                {/* Recruiter Controls: Candidate Target Role & Directory Management */}
+                <div className="bg-slate-950/70 border border-slate-800 rounded-xl p-3 mb-4 flex flex-wrap items-center justify-between gap-3">
+                  <div className="flex items-center gap-2">
+                    <Briefcase className="w-4 h-4 text-indigo-400" />
+                    <span className="text-xs text-slate-400">Target Role:</span>
+                    {isEditingRole ? (
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="text"
+                          value={editedRoleValue}
+                          onChange={(e) => setEditedRoleValue(e.target.value)}
+                          placeholder="e.g. Senior Backend Engineer"
+                          className="bg-slate-900 border border-indigo-500 rounded px-2.5 py-1 text-xs text-white focus:outline-none focus:ring-1 focus:ring-indigo-400"
+                        />
+                        <button
+                          onClick={handleSaveEditedRole}
+                          className="px-2.5 py-1 rounded bg-indigo-600 hover:bg-indigo-500 text-white text-[11px] font-semibold transition"
+                        >
+                          Save
+                        </button>
+                        <button
+                          onClick={() => setIsEditingRole(false)}
+                          className="px-2 py-1 rounded bg-slate-800 text-slate-400 hover:text-white text-[11px] transition"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-xs font-bold text-white bg-slate-900 px-2 py-0.5 rounded border border-slate-800">
+                          {hireDetail?.employee?.role}
+                        </span>
+                        <button
+                          onClick={() => {
+                            setEditedRoleValue(hireDetail.employee.role);
+                            setIsEditingRole(true);
+                          }}
+                          title="Edit Candidate Target Role"
+                          className="text-xs text-indigo-400 hover:text-indigo-300 p-1 rounded hover:bg-slate-900 transition flex items-center gap-1"
+                        >
+                          <Edit2 className="w-3 h-3" />
+                          <span className="text-[11px]">Edit Role</span>
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button
+                      onClick={handleRecalculateAssignment}
+                      title="Recalculate placement score using current candidate skills and updated team capacities"
+                      className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-cyan-300 border border-slate-700 transition"
+                    >
+                      <RotateCw className="w-3.5 h-3.5 text-cyan-400" />
+                      Re-score
+                    </button>
+                    <button
+                      onClick={() => {
+                        fetchTeams();
+                        setShowTeamsModal(true);
+                      }}
+                      className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-indigo-300 border border-slate-700 transition"
+                    >
+                      <Settings className="w-3.5 h-3.5 text-indigo-400" />
+                      Manage Teams & Roles
+                    </button>
+                    <button
+                      onClick={() => {
+                        fetchRoster();
+                        setShowRosterModal(true);
+                      }}
+                      className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-indigo-950/70 hover:bg-indigo-900 text-indigo-300 border border-indigo-800 transition"
+                    >
+                      <Users className="w-3.5 h-3.5 text-indigo-400" />
+                      Assigned Roster
+                    </button>
                   </div>
                 </div>
 
@@ -1122,10 +1484,13 @@ Contact: +1 (555) 987-1234, 88 Mission Boulevard, Seattle WA, elena.rostova@outl
               </div>
 
               <div className="space-y-3">
-                {Object.entries(hireDetail.skill_map.gaps_by_team).map(([teamName, gapData]) => {
-                  const coverage = gapData.coverage_percent || 0;
+                {Object.entries(hireDetail.skill_map?.gaps_by_team || {}).map(([teamName, gapData]) => {
                   const matched = gapData.matched_skills || [];
                   const missing = gapData.missing_skills || [];
+                  const totalReq = gapData.required_skills?.length || (matched.length + missing.length);
+                  const coverage = gapData.coverage_percent !== undefined && gapData.coverage_percent !== null
+                    ? gapData.coverage_percent
+                    : (totalReq > 0 ? Math.round((matched.length / totalReq) * 100) : 0);
                   return (
                     <div key={teamName} className="bg-slate-950 p-4 rounded border border-slate-800 space-y-3">
                       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -1140,7 +1505,7 @@ Contact: +1 (555) 987-1234, 88 Mission Boulevard, Seattle WA, elena.rostova@outl
                           </span>
                         </div>
                         <span className="text-xs text-slate-400">
-                          {matched.length} matched / {matched.length + missing.length} required
+                          {matched.length} matched / {totalReq} required
                         </span>
                       </div>
 
@@ -2247,6 +2612,581 @@ Contact: +1 (555) 987-1234, 88 Mission Boulevard, Seattle WA, elena.rostova@outl
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Team Roster & Placements Modal */}
+      {showRosterModal && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-5xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            {/* Modal Header */}
+            <div className="p-6 border-b border-slate-800 flex items-center justify-between bg-slate-950/60">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400">
+                  <Users className="w-6 h-6" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                    Company Team Roster & Engineering Placements
+                    <span className="text-xs px-2.5 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 font-medium">
+                      Live Directory
+                    </span>
+                  </h3>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    Real-time overview of engineers, squad capacities, starter projects, and candidate pipeline status.
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={fetchRoster}
+                  disabled={loadingRoster}
+                  title="Refresh Roster"
+                  className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors"
+                >
+                  <RotateCw className={`w-4 h-4 ${loadingRoster ? 'animate-spin' : ''}`} />
+                </button>
+                <button
+                  onClick={() => setShowRosterModal(false)}
+                  className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Quick Metrics Bar */}
+            <div className="px-6 py-3 bg-slate-950/40 border-b border-slate-800/80 flex flex-wrap items-center justify-between gap-4">
+              <div className="flex items-center gap-6 text-xs">
+                <div className="flex items-center gap-2">
+                  <span className="text-slate-400">Total Hires:</span>
+                  <span className="px-2 py-0.5 rounded bg-slate-800 text-white font-bold">
+                    {rosterData?.total_hires ?? 0}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-slate-400">Assigned Engineers:</span>
+                  <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 font-bold border border-emerald-500/30">
+                    {rosterData?.total_assigned ?? 0}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-slate-400">Unassigned / Pending:</span>
+                  <span className="px-2 py-0.5 rounded bg-amber-500/20 text-amber-400 font-bold border border-amber-500/30">
+                    {rosterData?.total_unassigned ?? 0}
+                  </span>
+                </div>
+              </div>
+
+              {/* Filter Pills */}
+              <div className="flex items-center gap-1.5 overflow-x-auto py-1 text-xs">
+                <button
+                  onClick={() => setRosterFilter('all')}
+                  className={`px-3 py-1 rounded-lg transition-all ${
+                    rosterFilter === 'all'
+                      ? 'bg-indigo-600 text-white font-medium shadow-md'
+                      : 'bg-slate-800/70 text-slate-400 hover:bg-slate-800 hover:text-slate-200'
+                  }`}
+                >
+                  All Teams ({rosterData?.teams?.length || 0})
+                </button>
+                {rosterData?.teams?.map((t) => (
+                  <button
+                    key={t.team_name}
+                    onClick={() => setRosterFilter(t.team_name)}
+                    className={`px-3 py-1 rounded-lg transition-all whitespace-nowrap ${
+                      rosterFilter === t.team_name
+                        ? 'bg-indigo-600 text-white font-medium shadow-md'
+                        : 'bg-slate-800/70 text-slate-400 hover:bg-slate-800 hover:text-slate-200'
+                    }`}
+                  >
+                    {t.team_name} ({t.current_load}/{t.capacity})
+                  </button>
+                ))}
+                {rosterData?.unassigned?.length > 0 && (
+                  <button
+                    onClick={() => setRosterFilter('unassigned')}
+                    className={`px-3 py-1 rounded-lg transition-all ${
+                      rosterFilter === 'unassigned'
+                        ? 'bg-amber-600 text-white font-medium shadow-md'
+                        : 'bg-amber-500/10 text-amber-300 hover:bg-amber-500/20 border border-amber-500/20'
+                    }`}
+                  >
+                    Unassigned ({rosterData.unassigned.length})
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Modal Body / Scrollable Teams & Members */}
+            <div className="p-6 overflow-y-auto space-y-6 flex-1 bg-slate-900/50">
+              {loadingRoster ? (
+                <div className="py-16 text-center">
+                  <RotateCw className="w-8 h-8 text-indigo-400 animate-spin mx-auto mb-3" />
+                  <p className="text-sm text-slate-400">Loading company team roster...</p>
+                </div>
+              ) : (
+                <>
+                  {/* Filtered Team Cards */}
+                  {rosterData?.teams
+                    ?.filter((t) => rosterFilter === 'all' || rosterFilter === t.team_name)
+                    ?.map((team) => {
+                      const loadPct = Math.min(100, Math.round((team.current_load / (team.capacity || 1)) * 100));
+                      return (
+                        <div
+                          key={team.team_name}
+                          className="bg-slate-950/70 border border-slate-800/90 rounded-xl p-5 hover:border-slate-700 transition-all"
+                        >
+                          {/* Team Card Header */}
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-800">
+                            <div>
+                              <div className="flex items-center gap-2.5">
+                                <Building2 className="w-5 h-5 text-indigo-400" />
+                                <h4 className="text-base font-semibold text-white">{team.team_name}</h4>
+                                <span className="text-xs px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 border border-slate-700">
+                                  {team.assigned_members?.length || 0} assigned
+                                </span>
+                              </div>
+                              {/* Skills */}
+                              {team.required_skills?.length > 0 && (
+                                <div className="flex flex-wrap items-center gap-1.5 mt-2">
+                                  <span className="text-[11px] text-slate-500">Required Skills:</span>
+                                  {team.required_skills.map((skill) => (
+                                    <span
+                                      key={skill}
+                                      className="text-[10px] px-2 py-0.5 rounded bg-slate-800/80 text-cyan-300 border border-slate-700/60 font-mono"
+                                    >
+                                      {skill}
+                                    </span>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Capacity Bar */}
+                            <div className="sm:text-right min-w-[180px]">
+                              <div className="flex items-center sm:justify-end gap-2 text-xs mb-1">
+                                <span className="text-slate-400">Capacity:</span>
+                                <span className="font-semibold text-slate-200">
+                                  {team.current_load} / {team.capacity}
+                                </span>
+                                <span className="text-[11px] text-slate-500">
+                                  ({team.available_slots} slots left)
+                                </span>
+                              </div>
+                              <div className="w-full sm:w-44 h-2 bg-slate-800 rounded-full overflow-hidden ml-auto">
+                                <div
+                                  className={`h-full transition-all duration-500 ${
+                                    loadPct >= 90
+                                      ? 'bg-rose-500'
+                                      : loadPct >= 60
+                                      ? 'bg-amber-400'
+                                      : 'bg-emerald-500'
+                                  }`}
+                                  style={{ width: `${loadPct}%` }}
+                                />
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Assigned Members Grid */}
+                          <div className="mt-4">
+                            {team.assigned_members?.length > 0 ? (
+                              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                                {team.assigned_members.map((member) => (
+                                  <div
+                                    key={member.id}
+                                    className="p-3.5 rounded-lg bg-slate-900 border border-slate-800/80 hover:border-indigo-500/40 hover:bg-slate-900/90 transition-all group flex flex-col justify-between"
+                                  >
+                                    <div>
+                                      <div className="flex items-start justify-between gap-2">
+                                        <div className="min-w-0">
+                                          <p className="font-semibold text-sm text-slate-100 truncate group-hover:text-indigo-300 transition-colors">
+                                            {member.name}
+                                          </p>
+                                          <p className="text-xs text-slate-400 truncate mt-0.5">
+                                            {member.role || 'Software Engineer'}
+                                          </p>
+                                        </div>
+                                        <span
+                                          className={`text-[10px] px-2 py-0.5 rounded-full font-medium whitespace-nowrap ${
+                                            member.status === 'done'
+                                              ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                                              : member.status === 'needs_attention'
+                                              ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+                                              : 'bg-blue-500/10 text-blue-400 border border-blue-500/20'
+                                          }`}
+                                        >
+                                          {member.status}
+                                        </span>
+                                      </div>
+
+                                      {/* Email handle */}
+                                      {member.email && (
+                                        <div className="mt-2 text-xs font-mono text-cyan-400/90 truncate flex items-center gap-1">
+                                          <span className="text-slate-600">@</span>
+                                          {member.email}
+                                        </div>
+                                      )}
+
+                                      {/* Starter Project */}
+                                      {member.starter_project && (
+                                        <div className="mt-2 text-[11px] text-slate-400 bg-slate-950/70 px-2 py-1 rounded border border-slate-800 flex items-center gap-1.5">
+                                          <Briefcase className="w-3 h-3 text-indigo-400 shrink-0" />
+                                          <span className="truncate">{member.starter_project}</span>
+                                        </div>
+                                      )}
+                                    </div>
+
+                                    {/* Action button */}
+                                    <div className="mt-3 pt-2 border-t border-slate-800/60 flex justify-end">
+                                      <button
+                                        onClick={() => {
+                                          setSelectedHireId(member.id);
+                                          setShowRosterModal(false);
+                                        }}
+                                        className="text-[11px] font-medium text-indigo-400 hover:text-indigo-300 transition-colors flex items-center gap-1"
+                                      >
+                                        Inspect Profile →
+                                      </button>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            ) : (
+                              <p className="text-xs text-slate-500 italic py-2">
+                                No engineers currently assigned to this team.
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+
+                  {/* Unassigned Candidates Section */}
+                  {(rosterFilter === 'all' || rosterFilter === 'unassigned') &&
+                    rosterData?.unassigned?.length > 0 && (
+                      <div className="bg-slate-950/70 border border-amber-500/30 rounded-xl p-5">
+                        <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+                          <div className="flex items-center gap-2">
+                            <span className="w-2.5 h-2.5 rounded-full bg-amber-400 animate-pulse" />
+                            <h4 className="text-base font-semibold text-amber-300">
+                              Unassigned / In-Flight Candidates
+                            </h4>
+                            <span className="text-xs px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                              {rosterData.unassigned.length} candidates
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 mt-4">
+                          {rosterData.unassigned.map((cand) => (
+                            <div
+                              key={cand.id}
+                              className="p-3.5 rounded-lg bg-slate-900 border border-slate-800 flex items-center justify-between hover:border-amber-500/40 transition-colors"
+                            >
+                              <div>
+                                <p className="font-semibold text-sm text-slate-200">{cand.name}</p>
+                                <p className="text-xs text-slate-400">{cand.role}</p>
+                                <span className="text-[10px] px-2 py-0.5 rounded bg-slate-800 text-slate-400 mt-1 inline-block">
+                                  Status: {cand.status}
+                                </span>
+                              </div>
+                              <button
+                                onClick={() => {
+                                  setSelectedHireId(cand.id);
+                                  setShowRosterModal(false);
+                                }}
+                                className="text-xs px-2.5 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-medium"
+                              >
+                                View Pipeline
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                </>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-4 border-t border-slate-800 bg-slate-950/60 flex items-center justify-between">
+              <span className="text-xs text-slate-500">
+                Click &quot;Inspect Profile&quot; on any engineer to view their complete skills radar, audit trail, and onboarding plan.
+              </span>
+              <button
+                onClick={() => setShowRosterModal(false)}
+                className="px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 font-medium text-xs transition-colors"
+              >
+                Close Roster
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Recruiter Team & Role Directory Management Modal */}
+      {showTeamsModal && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-4xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            {/* Modal Header */}
+            <div className="p-6 border-b border-slate-800 flex items-center justify-between bg-slate-950/60">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 rounded-xl bg-purple-500/10 border border-purple-500/20 text-purple-400">
+                  <Building2 className="w-6 h-6" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                    Recruiter Engineering Roles & Teams Directory
+                    <span className="text-xs px-2.5 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30 font-medium">
+                      Recruiter Hub
+                    </span>
+                  </h3>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    Add new engineering teams, customize required skill sets, and balance headcounts for automated matching.
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => {
+                  setShowTeamsModal(false);
+                  setIsAddingTeam(false);
+                  setEditingTeamIndex(null);
+                }}
+                className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Action Bar */}
+            <div className="px-6 py-3 bg-slate-950/40 border-b border-slate-800 flex items-center justify-between">
+              <p className="text-xs text-slate-400">
+                Active Teams & Squads: <span className="font-semibold text-slate-200">{teamsList.length}</span>
+              </p>
+              <button
+                onClick={() => setIsAddingTeam(!isAddingTeam)}
+                className="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold flex items-center gap-1.5 transition-colors"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                {isAddingTeam ? 'Cancel New Team' : 'Add New Team / Role'}
+              </button>
+            </div>
+
+            {/* Add New Team Form (collapsible) */}
+            {isAddingTeam && (
+              <form onSubmit={handleCreateTeam} className="p-5 bg-indigo-950/20 border-b border-indigo-500/30">
+                <h4 className="text-sm font-semibold text-indigo-300 mb-3 flex items-center gap-2">
+                  <Plus className="w-4 h-4" /> Add New Squad or Role Definition
+                </h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-medium text-slate-300 mb-1">
+                      Team Name <span className="text-rose-400">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="e.g. AI Platform, Core Infrastructure"
+                      value={newTeamData.name}
+                      onChange={(e) => setNewTeamData({ ...newTeamData, name: e.target.value })}
+                      required
+                      className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-indigo-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-slate-300 mb-1">
+                      Target Capacity (Seats)
+                    </label>
+                    <input
+                      type="number"
+                      min="1"
+                      max="50"
+                      value={newTeamData.capacity}
+                      onChange={(e) => setNewTeamData({ ...newTeamData, capacity: e.target.value })}
+                      className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-indigo-500"
+                    />
+                  </div>
+                  <div className="md:col-span-2">
+                    <label className="block text-xs font-medium text-slate-300 mb-1">
+                      Required Skills (comma-separated)
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Python, PyTorch, Kubernetes, MLOps, Docker"
+                      value={newTeamData.required_skills}
+                      onChange={(e) => setNewTeamData({ ...newTeamData, required_skills: e.target.value })}
+                      className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-indigo-500"
+                    />
+                  </div>
+                  <div className="md:col-span-2">
+                    <label className="block text-xs font-medium text-slate-300 mb-1">
+                      Squad Mission & Description
+                    </label>
+                    <textarea
+                      rows={2}
+                      placeholder="Brief description of the squad responsibilities and starter challenges..."
+                      value={newTeamData.description}
+                      onChange={(e) => setNewTeamData({ ...newTeamData, description: e.target.value })}
+                      className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-indigo-500"
+                    />
+                  </div>
+                </div>
+                <div className="flex justify-end gap-2 mt-4">
+                  <button
+                    type="button"
+                    onClick={() => setIsAddingTeam(false)}
+                    className="px-3 py-1.5 rounded-lg bg-slate-800 text-slate-300 text-xs hover:bg-slate-700"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-4 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold"
+                  >
+                    Save Team
+                  </button>
+                </div>
+              </form>
+            )}
+
+            {/* Teams List */}
+            <div className="p-6 overflow-y-auto space-y-4 flex-1">
+              {teamsList.map((team, idx) => {
+                const isEditing = editingTeamIndex === idx;
+                return (
+                  <div
+                    key={team.name}
+                    className="p-4 rounded-xl bg-slate-950/80 border border-slate-800 hover:border-slate-700 transition-all"
+                  >
+                    {isEditing ? (
+                      /* Inline Team Editor */
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <h4 className="text-sm font-bold text-indigo-400">Editing: {team.name}</h4>
+                          <span className="text-xs text-slate-500 font-mono">Current load: {team.current_load}</span>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                          <div>
+                            <label className="block text-[11px] text-slate-400 mb-1">Capacity</label>
+                            <input
+                              type="number"
+                              min="1"
+                              defaultValue={team.capacity}
+                              id={`edit-capacity-${idx}`}
+                              className="w-full px-2.5 py-1.5 bg-slate-900 border border-slate-700 rounded text-xs text-white"
+                            />
+                          </div>
+                          <div className="md:col-span-2">
+                            <label className="block text-[11px] text-slate-400 mb-1">Required Skills (comma-separated)</label>
+                            <input
+                              type="text"
+                              defaultValue={team.required_skills?.join(', ') || ''}
+                              id={`edit-skills-${idx}`}
+                              className="w-full px-2.5 py-1.5 bg-slate-900 border border-slate-700 rounded text-xs text-white"
+                            />
+                          </div>
+                        </div>
+                        <div>
+                          <label className="block text-[11px] text-slate-400 mb-1">Description</label>
+                          <textarea
+                            rows={2}
+                            defaultValue={team.description || ''}
+                            id={`edit-desc-${idx}`}
+                            className="w-full px-2.5 py-1.5 bg-slate-900 border border-slate-700 rounded text-xs text-white"
+                          />
+                        </div>
+                        <div className="flex justify-end gap-2 pt-2">
+                          <button
+                            type="button"
+                            onClick={() => setEditingTeamIndex(null)}
+                            className="px-3 py-1 text-xs rounded bg-slate-800 text-slate-300"
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const capacity = parseInt(document.getElementById(`edit-capacity-${idx}`).value) || team.capacity;
+                              const skills = document.getElementById(`edit-skills-${idx}`).value
+                                .split(',')
+                                .map((s) => s.trim())
+                                .filter(Boolean);
+                              const description = document.getElementById(`edit-desc-${idx}`).value;
+                              handleUpdateTeam(team.name, { capacity, required_skills: skills, description });
+                            }}
+                            className="px-3 py-1 text-xs rounded bg-indigo-600 hover:bg-indigo-500 text-white font-semibold"
+                          >
+                            Save Changes
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      /* Display Team Card */
+                      <div>
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <h4 className="text-base font-semibold text-white">{team.name}</h4>
+                              <span className="text-xs px-2 py-0.5 rounded bg-slate-800 text-slate-300 font-medium">
+                                Capacity: {team.current_load} / {team.capacity}
+                              </span>
+                            </div>
+                            <p className="text-xs text-slate-400 mt-1">{team.description}</p>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => setEditingTeamIndex(idx)}
+                              className="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-xs flex items-center gap-1 transition-colors"
+                            >
+                              <Edit2 className="w-3 h-3" /> Edit
+                            </button>
+                            <button
+                              onClick={() => handleDeleteTeam(team.name)}
+                              className="px-2.5 py-1 rounded bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 text-xs transition-colors"
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Skill Badges */}
+                        {team.required_skills?.length > 0 && (
+                          <div className="flex flex-wrap gap-1.5 mt-3 pt-3 border-t border-slate-800/80">
+                            {team.required_skills.map((skill) => (
+                              <span
+                                key={skill}
+                                className="text-[10px] px-2 py-0.5 rounded bg-slate-900 text-cyan-300 border border-slate-800 font-mono"
+                              >
+                                {skill}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-4 border-t border-slate-800 bg-slate-950/60 flex items-center justify-between">
+              <span className="text-xs text-slate-500">
+                Updating team capacities and required skill profiles updates the Project Management matching engine immediately.
+              </span>
+              <button
+                onClick={() => {
+                  setShowTeamsModal(false);
+                  setIsAddingTeam(false);
+                  setEditingTeamIndex(null);
+                }}
+                className="px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 font-medium text-xs transition-colors"
+              >
+                Close Directory
+              </button>
+            </div>
           </div>
         </div>
       )}

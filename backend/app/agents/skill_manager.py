@@ -364,23 +364,7 @@ class SkillManager:
             ))
 
         # 4. Compute Gaps by Team (required_skills, matched_skills, missing_skills, coverage_percent)
-        hire_canonical_set = {s.skill.lower() for s in skill_items}
-        gaps_by_team: Dict[str, TeamGapAnalysis] = {}
-
-        for team in self.teams:
-            tname = team["name"]
-            reqs = team.get("required_skills", [])
-            matched = [r for r in reqs if r.lower() in hire_canonical_set]
-            missing = [r for r in reqs if r.lower() not in hire_canonical_set]
-            coverage = round((len(matched) / max(1, len(reqs))) * 100, 1)
-
-            gaps_by_team[tname] = TeamGapAnalysis(
-                team=tname,
-                required_skills=reqs,
-                matched_skills=matched,
-                missing_skills=missing,
-                coverage_percent=coverage
-            )
+        gaps_by_team = self.compute_gaps(skill_items)
 
         github_summary = (
             f"Verified via @{gh_evidence.get('username')} across {total_repos} repos"
@@ -396,5 +380,43 @@ class SkillManager:
             github_summary=github_summary,
             redaction_summary=RedactionSummary(**pii_summary)
         )
+
+    def compute_gaps(self, skill_items: List[SkillItem]) -> Dict[str, TeamGapAnalysis]:
+        """
+        Computes deterministic skill gaps and coverage percentages for all engineering teams
+        using the skills extracted for a hire and ontology-level synonym normalization.
+        """
+        hire_canonical_set = set()
+        for s in skill_items:
+            s_name = s.skill if isinstance(s, SkillItem) else (s.get("skill") if isinstance(s, dict) else str(s))
+            hire_canonical_set.add(s_name.lower().strip())
+            norm, _ = ontology.normalize(s_name)
+            if norm:
+                hire_canonical_set.add(norm.lower().strip())
+
+        gaps_by_team: Dict[str, TeamGapAnalysis] = {}
+        for team in self.teams:
+            tname = team["name"]
+            reqs = team.get("required_skills", [])
+            matched = []
+            missing = []
+            for r in reqs:
+                r_lower = r.lower().strip()
+                r_norm, _ = ontology.normalize(r)
+                r_norm_lower = r_norm.lower().strip() if r_norm else r_lower
+                if r_lower in hire_canonical_set or r_norm_lower in hire_canonical_set:
+                    matched.append(r)
+                else:
+                    missing.append(r)
+            coverage = round((len(matched) / max(1, len(reqs))) * 100, 1)
+
+            gaps_by_team[tname] = TeamGapAnalysis(
+                team=tname,
+                required_skills=reqs,
+                matched_skills=matched,
+                missing_skills=missing,
+                coverage_percent=coverage
+            )
+        return gaps_by_team
 
 skill_manager = SkillManager()

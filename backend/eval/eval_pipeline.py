@@ -171,5 +171,29 @@ def run_evaluation():
     print("                    EVALUATION SUMMARY: ALL GATES PASS")
     print("=" * 70)
 
+    return {
+        "skills": {
+            "resumes_count": len(LABELLED_RESUMES),
+            "precision": round(precision * 100, 1),
+            "recall": round(recall * 100, 1),
+            "f1": round(f1 * 100, 1),
+            "true_positives": total_true_positives,
+            "total_extracted": total_extracted,
+            "total_expected": total_expected
+        },
+        "assignment": {
+            "hires_count": len(SAMPLE_ASSIGNMENT_HIRES),
+            "top1_matches": top_1_matches,
+            "top1_rate": round(top1_rate, 1),
+            "top2_matches": top_2_matches,
+            "top2_rate": round(top2_rate, 1)
+        },
+        "rag": {
+            "queries_count": len(RAG_BENCHMARK_QUERIES),
+            "correct_citations": correct_citations,
+            "accuracy": round(rag_accuracy, 1)
+        }
+    }
+
 if __name__ == "__main__":
     run_evaluation()
