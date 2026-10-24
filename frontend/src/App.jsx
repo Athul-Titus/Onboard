@@ -1095,26 +1095,45 @@ Contact: +1 (555) 987-1234, 88 Mission Boulevard, Seattle WA, elena.rostova@outl
         {/* TAB 3: PERSONALIZED 30-DAY GUIDE (RAG) */}
         {activeTab === 'guide' && (
           <div className="space-y-5">
-            <div className="bg-slate-900 border border-slate-800 rounded-lg p-5 flex items-center justify-between">
+            {/* Header */}
+            <div className="bg-slate-900 border border-slate-800 rounded-lg p-5 flex items-start justify-between gap-4">
               <div>
-                <h3 className="font-bold text-white text-base">Grounded 30-Day Engineering Guide</h3>
+                <h3 className="font-bold text-white text-base">Personalised 30-Day Engineering Guide</h3>
                 <p className="text-xs text-slate-400 mt-0.5">
-                  Every step cites internal engineering documentation. Missing policies are explicitly flagged.
+                  Every step is grounded in internal engineering documentation. Missing policies are explicitly flagged.
+                  {hireDetail?.guide?.total_count > 0 && (
+                    <span className="ml-1">
+                      Sources verified: <strong className="text-slate-300">{hireDetail.guide.verified_count}/{hireDetail.guide.total_count}</strong>.
+                    </span>
+                  )}
                 </p>
               </div>
-              <div className="flex items-center gap-2">
-                <span className="px-2 py-0.5 rounded text-xs font-semibold bg-emerald-950 text-emerald-400 border border-emerald-800 flex items-center gap-1">
-                  <CheckCircle2 className="w-3.5 h-3.5" /> Citation-verified
-                </span>
+              <div className="flex items-center gap-2 shrink-0">
+                {hireDetail?.guide?.total_count > 0 ? (
+                  <span className={`px-2 py-0.5 rounded text-xs font-semibold flex items-center gap-1 border ${
+                    hireDetail.guide.verified_count === hireDetail.guide.total_count
+                      ? 'bg-emerald-950 text-emerald-400 border-emerald-800'
+                      : 'bg-amber-950 text-amber-400 border-amber-800'
+                  }`}>
+                    <CheckCircle2 className="w-3.5 h-3.5" />
+                    {hireDetail.guide.verified_count}/{hireDetail.guide.total_count} Citations Verified
+                  </span>
+                ) : (
+                  <span className="px-2 py-0.5 rounded text-xs font-semibold flex items-center gap-1 border bg-slate-800 text-slate-400 border-slate-700">
+                    <Clock className="w-3.5 h-3.5" /> Awaiting Generation
+                  </span>
+                )}
               </div>
             </div>
 
             {hireDetail?.guide ? (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 {hireDetail.guide.sections.map((sec, idx) => (
-                  <div key={idx} className="bg-slate-900 border border-slate-800 rounded-lg p-5">
+                  <div key={idx} className={`bg-slate-900 border border-slate-800 rounded-lg p-5 ${
+                    sec.title === 'Overview' ? 'md:col-span-2' : ''
+                  }`}>
                     <h4 className="font-bold text-white text-sm pb-2 border-b border-slate-800 mb-3 flex items-center gap-2">
-                      <span className="w-1.5 h-1.5 bg-indigo-500"></span>
+                      <span className="w-1.5 h-4 bg-indigo-500 rounded-sm inline-block shrink-0"></span>
                       {sec.title}
                     </h4>
 
@@ -1124,23 +1143,36 @@ Contact: +1 (555) 987-1234, 88 Mission Boulevard, Seattle WA, elena.rostova@outl
                         return (
                           <div
                             key={itemIdx}
-                            className={`p-3 rounded-xl border text-xs leading-relaxed ${
+                            className={`p-3 rounded border text-xs leading-relaxed ${
                               isNotDoc
-                                ? 'bg-amber-950/20 border-amber-800/40 text-amber-300'
-                                : 'bg-slate-950/60 border-slate-800 text-slate-300'
+                                ? 'bg-amber-950/20 border-amber-800/40'
+                                : 'bg-slate-950/60 border-slate-800'
                             }`}
                           >
-                            <div>{item.text}</div>
+                            {/* Actionable instruction */}
+                            <p className={`font-medium mb-1 ${isNotDoc ? 'text-amber-300' : 'text-slate-200'}`}>
+                              {item.text}
+                            </p>
+                            {/* Optional detail */}
+                            {item.detail && (
+                              <p className="text-slate-400 text-[11px] mb-1.5 leading-snug">
+                                {item.detail}
+                              </p>
+                            )}
+                            {/* Citation or guardrail badge */}
                             {item.citation ? (
                               <button
-                                onClick={() => setCitationModal(item.citation)}
-                                className="mt-2 inline-flex items-center gap-1 text-[11px] font-mono text-indigo-400 hover:text-indigo-300 bg-indigo-950/50 hover:bg-indigo-950 px-2 py-0.5 rounded border border-indigo-800/50 transition cursor-pointer"
+                                onClick={() => setCitationModal({
+                                  ...item.citation,
+                                  source_text: item.citation.source_text
+                                })}
+                                className="mt-1 inline-flex items-center gap-1 text-[11px] font-mono text-indigo-400 hover:text-indigo-300 bg-indigo-950/50 hover:bg-indigo-950 px-2 py-0.5 rounded border border-indigo-800/50 transition cursor-pointer"
                               >
                                 <ExternalLink className="w-3 h-3" />
-                                {item.citation.doc} # {item.citation.section}
+                                {item.citation.doc} § {item.citation.section}
                               </button>
                             ) : (
-                              <span className="mt-2 inline-block text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-amber-950 text-amber-400 border border-amber-800/60">
+                              <span className="mt-1 inline-block text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-amber-950 text-amber-400 border border-amber-800/60">
                                 Guardrail: Not Documented
                               </span>
                             )}
@@ -1152,10 +1184,15 @@ Contact: +1 (555) 987-1234, 88 Mission Boulevard, Seattle WA, elena.rostova@outl
                 ))}
               </div>
             ) : (
-              <div className="p-12 text-center text-slate-500">Guide generation in progress...</div>
+              <div className="p-12 text-center text-slate-500 bg-slate-900 border border-slate-800 rounded-lg">
+                <BookOpen className="w-8 h-8 mx-auto mb-3 text-slate-700" />
+                <p className="text-sm">Guide generation in progress...</p>
+                <p className="text-xs text-slate-600 mt-1">The guide runs after team assignment is approved.</p>
+              </div>
             )}
           </div>
         )}
+
 
         {/* TAB 4: AUDIT TRAIL */}
         {activeTab === 'audit' && (
@@ -1754,25 +1791,38 @@ Contact: +1 (555) 987-1234, 88 Mission Boulevard, Seattle WA, elena.rostova@outl
       {/* MODAL: CITATION SOURCE VIEW */}
       {citationModal && (
         <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-700 rounded-lg max-w-lg w-full p-6 space-y-4 shadow-2xl">
+          <div className="bg-slate-900 border border-slate-700 rounded-lg max-w-2xl w-full p-6 space-y-4 shadow-2xl">
             <div className="flex items-center justify-between pb-2 border-b border-slate-800">
               <h3 className="text-base font-bold text-white flex items-center gap-2">
                 <FileText className="w-5 h-5 text-indigo-400" />
-                Cited Documentation Source
+                Source Documentation
               </h3>
               <button onClick={() => setCitationModal(null)} className="text-slate-400 hover:text-white">
                 <X className="w-5 h-5" />
               </button>
             </div>
-            <div className="space-y-2 text-xs">
-              <div>
-                <span className="text-slate-400">Document:</span> <strong className="text-indigo-400">{citationModal.doc}</strong>
+            <div className="space-y-3 text-xs">
+              <div className="flex items-center gap-4">
+                <div>
+                  <span className="text-slate-500 uppercase tracking-wider text-[10px] font-semibold block mb-0.5">Document</span>
+                  <strong className="text-indigo-400 font-mono">{citationModal.doc}</strong>
+                </div>
+                <div>
+                  <span className="text-slate-500 uppercase tracking-wider text-[10px] font-semibold block mb-0.5">Section</span>
+                  <strong className="text-slate-200">{citationModal.section}</strong>
+                </div>
               </div>
               <div>
-                <span className="text-slate-400">Section:</span> <strong className="text-slate-200">{citationModal.section}</strong>
-              </div>
-              <div className="p-3 bg-slate-950 rounded-xl border border-slate-800 font-mono text-[11px] text-slate-300">
-                Verified citation in knowledge store: <code>backend/app/data/docs/{citationModal.doc}</code>
+                <span className="text-slate-500 uppercase tracking-wider text-[10px] font-semibold block mb-1.5">Source Text</span>
+                {citationModal.source_text ? (
+                  <pre className="p-3 bg-slate-950 rounded border border-slate-800 text-[11px] text-slate-300 whitespace-pre-wrap leading-relaxed font-sans max-h-72 overflow-y-auto">
+                    {citationModal.source_text}
+                  </pre>
+                ) : (
+                  <p className="p-3 bg-slate-950 rounded border border-slate-800 text-slate-400 italic">
+                    Citation verified in knowledge store — source text not yet cached. Run a new intake to populate it.
+                  </p>
+                )}
               </div>
             </div>
             <div className="flex justify-end">
@@ -1786,6 +1836,7 @@ Contact: +1 (555) 987-1234, 88 Mission Boulevard, Seattle WA, elena.rostova@outl
           </div>
         </div>
       )}
+
 
       {/* MODAL: OVERRIDE ASSIGNMENT */}
       {showOverrideModal && (
