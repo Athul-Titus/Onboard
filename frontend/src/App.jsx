@@ -899,7 +899,7 @@ Contact: +1 (555) 987-1234, 88 Mission Boulevard, Seattle WA, elena.rostova@outl
                             <h4 className="font-bold text-sm text-white">{cand.team}</h4>
                             <p className="text-xs text-slate-400 line-clamp-1 mb-2">Project: {cand.project}</p>
 
-                            {/* Score Breakdown Bars */}
+                            {/* Score Breakdown Bars for all 4 deterministic components */}
                             <div className="space-y-1.5 text-[10px]">
                               <div>
                                 <div className="flex justify-between text-slate-400">
@@ -913,11 +913,31 @@ Contact: +1 (555) 987-1234, 88 Mission Boulevard, Seattle WA, elena.rostova@outl
 
                               <div>
                                 <div className="flex justify-between text-slate-400">
+                                  <span>Gap Coverage (25%)</span>
+                                  <span>{Math.round(cand.score_breakdown.gap_coverage * 100)}%</span>
+                                </div>
+                                <div className="w-full bg-slate-800 h-1 rounded-full overflow-hidden">
+                                  <div className="bg-emerald-500 h-1 rounded-full" style={{ width: `${cand.score_breakdown.gap_coverage * 100}%` }}></div>
+                                </div>
+                              </div>
+
+                              <div>
+                                <div className="flex justify-between text-slate-400">
                                   <span>Available Capacity (20%)</span>
                                   <span>{Math.round(cand.score_breakdown.capacity * 100)}%</span>
                                 </div>
                                 <div className="w-full bg-slate-800 h-1 rounded-full overflow-hidden">
                                   <div className="bg-cyan-500 h-1 rounded-full" style={{ width: `${cand.score_breakdown.capacity * 100}%` }}></div>
+                                </div>
+                              </div>
+
+                              <div>
+                                <div className="flex justify-between text-slate-400">
+                                  <span>Learning Gap (-15%)</span>
+                                  <span>{Math.round(cand.score_breakdown.learning_gap * 100)}%</span>
+                                </div>
+                                <div className="w-full bg-slate-800 h-1 rounded-full overflow-hidden">
+                                  <div className="bg-amber-500 h-1 rounded-full" style={{ width: `${cand.score_breakdown.learning_gap * 100}%` }}></div>
                                 </div>
                               </div>
                             </div>

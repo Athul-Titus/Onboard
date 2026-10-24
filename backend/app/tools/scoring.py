@@ -14,19 +14,38 @@ def compute_team_scores(
     Each component is normalised 0.0 - 1.0.
     Returns ranked teams with complete score breakdown.
     """
-    hire_skill_set = {s.lower() for s in hire_skills}
+    from backend.app.tools.ontology import ontology
+    
+    # Expand candidate skills to canonical and all aliases to prevent thin parse distortion
+    hire_skill_set = set()
+    for s in hire_skills:
+        clean_s = s.strip().lower()
+        hire_skill_set.add(clean_s)
+        canon, matched = ontology.normalize(s)
+        if matched:
+            hire_skill_set.add(canon.lower())
+            for alias in ontology.get_aliases(canon):
+                hire_skill_set.add(alias.lower())
+
     results = []
 
     for team in teams:
         team_name = team["name"]
-        req_skills = [s.lower() for s in team.get("required_skills", [])]
+        raw_req_skills = team.get("required_skills", [])
         capacity = max(1, team.get("capacity", 5))
         current_load = team.get("current_load", 0)
 
-        # 1. Skill Match: fraction of team required skills possessed by hire
-        matched_skills = [s for s in req_skills if s in hire_skill_set]
-        missing_skills = [s for s in req_skills if s not in hire_skill_set]
-        skill_match = len(matched_skills) / max(1, len(req_skills))
+        # Canonicalize required skills for robust matching
+        matched_skills = []
+        missing_skills = []
+        for req in raw_req_skills:
+            req_canon, _ = ontology.normalize(req)
+            if req.lower() in hire_skill_set or req_canon.lower() in hire_skill_set:
+                matched_skills.append(req)
+            else:
+                missing_skills.append(req)
+
+        skill_match = len(matched_skills) / max(1, len(raw_req_skills))
 
         # 2. Gap Coverage: how many of the hire's skills address the team's need
         gap_coverage = len(matched_skills) / max(1, len(hire_skill_set)) if hire_skill_set else 0.0
@@ -37,7 +56,7 @@ def compute_team_scores(
         capacity_score = min(1.0, available_slots / capacity)
 
         # 4. Learning Gap: fraction of required skills the hire still needs to learn
-        learning_gap = len(missing_skills) / max(1, len(req_skills))
+        learning_gap = len(missing_skills) / max(1, len(raw_req_skills))
 
         # Weighted calculation
         total_score = (
