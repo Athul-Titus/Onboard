@@ -30,6 +30,7 @@ from backend.app.schemas import (
     Employee,
     IdentityProposal,
     SkillMap,
+    SkillItem,
     Assignment,
     Guide,
     AuditEntry,
@@ -355,12 +356,16 @@ def get_hire(id: str, db: Session = Depends(get_db)):
     skill_map = None
     if emp.skill_map:
         try:
-            skills = json.loads(emp.skill_map.skills_json or "[]")
+            raw_skills = json.loads(emp.skill_map.skills_json or "[]")
+            # Validate each skill as SkillItem (handles both dicts and already-validated objects)
+            skill_items = [SkillItem.model_validate(s) if isinstance(s, dict) else s for s in raw_skills]
             raw_gaps = json.loads(emp.skill_map.gaps_by_team_json or "{}")
             formatted_gaps = {}
             for tname, gval in raw_gaps.items():
                 if isinstance(gval, dict):
-                    formatted_gaps[tname] = TeamGapAnalysis(**gval)
+                    # Ensure 'team' field is set (may be missing in older records)
+                    gval.setdefault("team", tname)
+                    formatted_gaps[tname] = TeamGapAnalysis.model_validate(gval)
                 elif isinstance(gval, list):
                     formatted_gaps[tname] = TeamGapAnalysis(
                         team=tname,
@@ -371,7 +376,7 @@ def get_hire(id: str, db: Session = Depends(get_db)):
                     )
             skill_map = SkillMap(
                 employee_id=emp.id,
-                skills=skills,
+                skills=skill_items,
                 gaps_by_team=formatted_gaps
             )
         except Exception as e:
