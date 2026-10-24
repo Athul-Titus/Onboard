@@ -43,3 +43,20 @@ def test_create_and_get_hire():
     export_res = client.get(f"/hires/{hire_id}/export")
     assert export_res.status_code == 200
     assert "OnboardOS Employee Onboarding Package" in export_res.text
+
+def test_hire_validation_errors():
+    # Empty name
+    res = client.post("/hires", json={"name": "", "role": "Backend", "start_date": "2026-11-01", "resume_text": "A" * 60})
+    assert res.status_code == 400
+    assert "Full Name is required" in res.json()["detail"]
+
+    # Short resume (< 50 chars)
+    res = client.post("/hires", json={"name": "Valid Name", "role": "Backend", "start_date": "2026-11-01", "resume_text": "Too short"})
+    assert res.status_code == 400
+    assert "at least 50 characters" in res.json()["detail"]
+
+def test_validate_github_endpoint():
+    res = client.get("/validate-github/octocat")
+    assert res.status_code == 200
+    data = res.json()
+    assert "exists" in data

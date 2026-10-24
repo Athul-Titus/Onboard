@@ -1234,12 +1234,21 @@ Contact: +1-555-0199, 123 Tech Lane, San Francisco CA, john.personal@gmail.com, 
                 </label>
                 <input
                   type="text"
-                  required
                   placeholder="e.g. Jane Doe"
                   value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-white focus:ring-2 focus:ring-indigo-500 placeholder:text-slate-600"
+                  onChange={(e) => {
+                    setFormData({ ...formData, name: e.target.value });
+                    if (intakeErrors.name) setIntakeErrors((prev) => ({ ...prev, name: null }));
+                  }}
+                  className={`w-full bg-slate-950 border rounded-lg p-2.5 text-white focus:ring-2 focus:ring-indigo-500 placeholder:text-slate-600 ${
+                    intakeErrors.name ? 'border-rose-500/80 bg-rose-500/5' : 'border-slate-700'
+                  }`}
                 />
+                {intakeErrors.name && (
+                  <p className="text-rose-400 text-[11px] mt-1 flex items-center gap-1 font-medium">
+                    <AlertCircle className="w-3.5 h-3.5" /> {intakeErrors.name}
+                  </p>
+                )}
               </div>
 
               <div className="grid grid-cols-2 gap-3">
@@ -1248,10 +1257,14 @@ Contact: +1-555-0199, 123 Tech Lane, San Francisco CA, john.personal@gmail.com, 
                     Role <span className="text-rose-400">*</span>
                   </label>
                   <select
-                    required
                     value={formData.role}
-                    onChange={(e) => setFormData({ ...formData, role: e.target.value })}
-                    className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-white focus:ring-2 focus:ring-indigo-500"
+                    onChange={(e) => {
+                      setFormData({ ...formData, role: e.target.value });
+                      if (intakeErrors.role) setIntakeErrors((prev) => ({ ...prev, role: null }));
+                    }}
+                    className={`w-full bg-slate-950 border rounded-lg p-2.5 text-white focus:ring-2 focus:ring-indigo-500 ${
+                      intakeErrors.role ? 'border-rose-500/80 bg-rose-500/5' : 'border-slate-700'
+                    }`}
                   >
                     <option value="Backend">Backend</option>
                     <option value="Frontend">Frontend</option>
@@ -1259,6 +1272,11 @@ Contact: +1-555-0199, 123 Tech Lane, San Francisco CA, john.personal@gmail.com, 
                     <option value="DevOps">DevOps</option>
                     <option value="Mobile">Mobile</option>
                   </select>
+                  {intakeErrors.role && (
+                    <p className="text-rose-400 text-[11px] mt-1 flex items-center gap-1">
+                      <AlertCircle className="w-3 h-3" /> {intakeErrors.role}
+                    </p>
+                  )}
                 </div>
                 <div>
                   <label className="block text-slate-300 font-semibold mb-1">
@@ -1266,25 +1284,66 @@ Contact: +1-555-0199, 123 Tech Lane, San Francisco CA, john.personal@gmail.com, 
                   </label>
                   <input
                     type="date"
-                    required
                     value={formData.startDate}
-                    onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
-                    className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-white focus:ring-2 focus:ring-indigo-500"
+                    onChange={(e) => {
+                      setFormData({ ...formData, startDate: e.target.value });
+                      if (intakeErrors.startDate) setIntakeErrors((prev) => ({ ...prev, startDate: null }));
+                    }}
+                    className={`w-full bg-slate-950 border rounded-lg p-2.5 text-white focus:ring-2 focus:ring-indigo-500 ${
+                      intakeErrors.startDate ? 'border-rose-500/80 bg-rose-500/5' : 'border-slate-700'
+                    }`}
                   />
+                  {intakeErrors.startDate && (
+                    <p className="text-rose-400 text-[11px] mt-1 flex items-center gap-1">
+                      <AlertCircle className="w-3 h-3" /> {intakeErrors.startDate}
+                    </p>
+                  )}
                 </div>
               </div>
 
               <div>
-                <label className="block text-slate-300 font-semibold mb-1">
-                  GitHub Username <span className="text-slate-500 font-normal text-[11px]">(optional, for repo verification)</span>
-                </label>
-                <input
-                  type="text"
-                  placeholder="e.g. octocat (leave empty for resume-only)"
-                  value={formData.githubUsername}
-                  onChange={(e) => setFormData({ ...formData, githubUsername: e.target.value })}
-                  className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-white focus:ring-2 focus:ring-indigo-500 placeholder:text-slate-600"
-                />
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-slate-300 font-semibold">
+                    GitHub Username <span className="text-slate-500 font-normal text-[11px]">(optional, for repo verification)</span>
+                  </label>
+                  {isValidatingGithub && (
+                    <span className="flex items-center gap-1 text-[11px] text-indigo-400">
+                      <RefreshCw className="w-3 h-3 animate-spin" /> Verifying profile...
+                    </span>
+                  )}
+                </div>
+                <div className="relative">
+                  <input
+                    type="text"
+                    placeholder="e.g. octocat (leave empty for resume-only)"
+                    value={formData.githubUsername}
+                    onBlur={() => checkGithubUsername(formData.githubUsername)}
+                    onChange={(e) => {
+                      setFormData({ ...formData, githubUsername: e.target.value });
+                      setGithubCheckInfo(null);
+                      if (intakeErrors.githubUsername) setIntakeErrors((prev) => ({ ...prev, githubUsername: null }));
+                    }}
+                    className={`w-full bg-slate-950 border rounded-lg p-2.5 text-white focus:ring-2 focus:ring-indigo-500 placeholder:text-slate-600 ${
+                      intakeErrors.githubUsername || githubCheckInfo?.status === 'not_found'
+                        ? 'border-rose-500/80 bg-rose-500/5'
+                        : githubCheckInfo?.status === 'valid'
+                        ? 'border-emerald-500/60'
+                        : 'border-slate-700'
+                    }`}
+                  />
+                </div>
+                {(intakeErrors.githubUsername || githubCheckInfo?.status === 'not_found') && (
+                  <p className="text-rose-400 text-[11px] mt-1.5 flex items-center gap-1 font-medium animate-shake">
+                    <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                    <span>{intakeErrors.githubUsername || githubCheckInfo.message}</span>
+                  </p>
+                )}
+                {githubCheckInfo?.status === 'valid' && (
+                  <p className="text-emerald-400 text-[11px] mt-1 flex items-center gap-1 font-medium">
+                    <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                    <span>GitHub profile found: {githubCheckInfo.message}</span>
+                  </p>
+                )}
               </div>
 
               {/* Resume File Upload & Fallback */}
@@ -1348,19 +1407,30 @@ Contact: +1-555-0199, 123 Tech Lane, San Francisco CA, john.personal@gmail.com, 
                 <div>
                   <div className="flex items-center justify-between mb-1">
                     <label className="text-[11px] text-slate-400 font-medium">
-                      Resume Text (Editable Fallback Preview)
+                      Resume Text (Editable Fallback Preview) <span className="text-rose-400">*</span>
                     </label>
                     <span className="text-[10px] text-slate-500">
-                      {formData.resumeText ? `${formData.resumeText.length} characters` : 'Empty'}
+                      {formData.resumeText ? `${formData.resumeText.trim().length} chars (min 50)` : '0 chars'}
                     </span>
                   </div>
                   <textarea
                     rows={5}
                     value={formData.resumeText}
-                    onChange={(e) => setFormData({ ...formData, resumeText: e.target.value })}
+                    onChange={(e) => {
+                      setFormData({ ...formData, resumeText: e.target.value });
+                      if (intakeErrors.resumeText) setIntakeErrors((prev) => ({ ...prev, resumeText: null }));
+                    }}
                     placeholder="Paste or edit resume text here..."
-                    className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-white font-mono text-[11px] focus:ring-2 focus:ring-indigo-500"
+                    className={`w-full bg-slate-950 border rounded-lg p-2.5 text-white font-mono text-[11px] focus:ring-2 focus:ring-indigo-500 ${
+                      intakeErrors.resumeText ? 'border-rose-500/80 bg-rose-500/5' : 'border-slate-700'
+                    }`}
                   />
+                  {intakeErrors.resumeText && (
+                    <p className="text-rose-400 text-[11px] mt-1.5 flex items-center gap-1 font-medium animate-shake">
+                      <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                      <span>{intakeErrors.resumeText}</span>
+                    </p>
+                  )}
                 </div>
               </div>
 
@@ -1368,16 +1438,29 @@ Contact: +1-555-0199, 123 Tech Lane, San Francisco CA, john.personal@gmail.com, 
                 <button
                   type="button"
                   onClick={() => setShowIntakeModal(false)}
-                  className="px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition"
+                  disabled={loading || isValidatingGithub}
+                  className="px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition disabled:opacity-50"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  disabled={loading}
-                  className="px-5 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-semibold shadow-md transition"
+                  disabled={loading || isValidatingGithub || uploadingResume}
+                  className="px-5 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-semibold shadow-md transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                 >
-                  {loading ? 'Starting Agents...' : 'Trigger Workflow'}
+                  {loading ? (
+                    <>
+                      <RefreshCw className="w-4 h-4 animate-spin" />
+                      <span>Starting Agents...</span>
+                    </>
+                  ) : isValidatingGithub ? (
+                    <>
+                      <RefreshCw className="w-4 h-4 animate-spin" />
+                      <span>Verifying GitHub...</span>
+                    </>
+                  ) : (
+                    <span>Trigger Workflow</span>
+                  )}
                 </button>
               </div>
             </form>
