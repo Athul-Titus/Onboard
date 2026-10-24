@@ -38,7 +38,11 @@ import {
   Activity
 } from 'lucide-react';
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+const API_BASE = import.meta.env.VITE_API_BASE_URL || (
+  typeof window !== 'undefined' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1'
+    ? 'https://onboard-wikx.onrender.com'
+    : 'http://localhost:8000'
+);
 
 export default function App() {
   const [hires, setHires] = useState([]);

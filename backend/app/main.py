@@ -49,6 +49,7 @@ from backend.app.schemas import (
     RosterOverviewResponse
 )
 from backend.app.tools.directory import init_mock_directory
+from backend.app.tools.seed_data import init_demo_database
 from backend.app.orchestrator import orchestrator
 from backend.app.agents.skill_manager import skill_manager
 
@@ -102,10 +103,11 @@ ws_manager = ConnectionManager()
 
 @app.on_event("startup")
 def startup_event():
-    """Initializes tables and seeds the mock directory table for email collision tests."""
+    """Initializes tables and seeds the mock directory and demo employees."""
     with next(get_db()) as db:
         init_mock_directory(db)
-    logger.info("OnboardOS backend initialized with seed directory.")
+        init_demo_database(db)
+    logger.info("OnboardOS backend initialized with seed directory and demo hires.")
 
 @app.get("/health")
 def health():
