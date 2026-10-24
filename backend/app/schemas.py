@@ -29,7 +29,9 @@ class SkillItem(BaseModel):
 class SkillMap(BaseModel):
     employee_id: str
     skills: List[SkillItem] = Field(default_factory=list)
-    gaps_by_team: Dict[str, List[str]] = Field(default_factory=dict)
+    gaps_by_team: Dict[str, Any] = Field(default_factory=dict)
+    verification_state: str = "resume-only"  # "verified" | "resume-only"
+    github_summary: Optional[str] = None
 
 # 3. Team & Project
 class Team(BaseModel):

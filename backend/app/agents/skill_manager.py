@@ -136,7 +136,9 @@ class SkillManager:
         skill_items: List[SkillItem] = []
         seen_skills = set()
 
-        gh_languages = {k.lower(): v for k, v in gh_evidence.get("languages", {}).items()}
+        gh_state = gh_evidence.get("verification_state", "resume-only")
+        gh_skill_counts = gh_evidence.get("skill_repo_counts", {})
+        total_repos = gh_evidence.get("total_inspected_repos", 0)
         certs_str = " ".join(extracted.certifications).lower()
 
         for raw_s in extracted.skills:
@@ -148,27 +150,31 @@ class SkillManager:
             canon_lower = canonical.lower()
             evidence_list: List[str] = []
             status: SkillStatus = "claimed"
-            confidence: float = 0.80
+            confidence: float = 0.75
 
             # Find specific resume quote evidence
             resume_evidence = self.find_resume_evidence(safe_resume, canonical)
 
-            # Verify against GitHub
-            if canon_lower in gh_languages:
+            # 1. GitHub verification
+            if canonical in gh_skill_counts and gh_skill_counts[canonical] > 0:
+                count = gh_skill_counts[canonical]
                 status = "verified"
-                confidence = 0.95
-                repo_count = gh_languages[canon_lower]
-                evidence_list.append(f"GitHub: {repo_count} public repositories written in {canonical}")
+                confidence = round(min(0.98, 0.85 + (count / max(1, total_repos)) * 0.15), 2)
+                evidence_list.append(f"GitHub: {canonical} in {count} of {total_repos} repos")
                 if gh_evidence.get("has_tests"):
-                    evidence_list.append("Automated test files detected in GitHub repositories")
+                    evidence_list.append("GitHub: Automated test suites detected in repositories")
+            elif gh_state == "resume-only":
+                evidence_list.append(f"GitHub: [resume-only] {gh_evidence.get('reason', 'Profile not available')}")
+            else:
+                evidence_list.append(f"GitHub: Not found in public repos of @{gh_evidence.get('username')}")
 
-            # Verify against Certifications
+            # 2. Certification verification
             if canon_lower in certs_str or any(canon_lower in c.lower() for c in extracted.certifications):
                 status = "verified"
-                confidence = 0.95
+                confidence = max(confidence, 0.95)
                 evidence_list.append(f"Certified: Listed under verified credentials ({certs_str[:40]})")
 
-            # Add the exact resume line quotes
+            # 3. Add the exact resume line quotes
             evidence_list.extend(resume_evidence)
 
             skill_items.append(SkillItem(
@@ -189,10 +195,18 @@ class SkillManager:
             missing = [r for r in reqs if r.lower() not in hire_canonical_set]
             gaps_by_team[tname] = missing
 
+        github_summary = (
+            f"Verified via @{gh_evidence.get('username')} across {total_repos} repos"
+            if gh_state == "verified"
+            else f"State: resume-only ({gh_evidence.get('reason', 'No GitHub verification')})"
+        )
+
         return SkillMap(
             employee_id=employee_id,
             skills=skill_items,
-            gaps_by_team=gaps_by_team
+            gaps_by_team=gaps_by_team,
+            verification_state=gh_state,
+            github_summary=github_summary
         )
 
 skill_manager = SkillManager()
