@@ -310,14 +310,21 @@ def create_hire(req: HireCreateRequest, background_tasks: BackgroundTasks, db: S
     db.commit()
     db.refresh(emp)
 
+    types_removed = pii_summary.get("types_removed", [])
+    types_str = ", ".join(types_removed) if types_removed else "None"
     orchestrator.log_audit(
         db,
         employee_id=emp_id,
         agent="Orchestrator",
         action="intake_created",
-        input_summary=f"New Hire: {req.name}, Role: {req.role}, PII Redacted: {pii_summary.get('total', 0)} items",
-        output_summary=f"Record {emp_id} initialized",
-        reason="Triggered multi-agent onboarding workflow with privacy-sanitized resume."
+        input_summary=f"New Hire: {req.name}, Role: {req.role}, PII Redacted: {pii_summary.get('total', 0)} items (types: {types_str})",
+        output_summary=f"Record {emp_id} initialized with privacy-sanitized resume",
+        reason=(
+            f"Triggered multi-agent onboarding workflow. PII removal breakdown: "
+            f"{pii_summary.get('phone', 0)} phone, {pii_summary.get('email', 0)} personal email, "
+            f"{pii_summary.get('address', 0)} address, {pii_summary.get('dob', 0)} DOB instances. "
+            "Raw PII values discarded per privacy policy; only counts and types logged."
+        )
     )
 
     # Run workflow in background thread

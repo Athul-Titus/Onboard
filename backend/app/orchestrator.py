@@ -34,6 +34,21 @@ logger = logging.getLogger(__name__)
 def utc_iso():
     return datetime.now(timezone.utc).isoformat()
 
+def sanitize_audit_text(text: str) -> str:
+    """
+    Sanitizes any raw PII values (phone numbers, personal emails, physical addresses, dates of birth)
+    from audit log summaries and reasons.
+    Strict privacy rule: NEVER log redacted PII values; log only counts and types removed.
+    """
+    if not text:
+        return text
+
+    sanitized, summary = skill_manager.redact_pii_with_summary(str(text))
+    if summary.get("total", 0) > 0:
+        types_str = ", ".join(summary.get("types_removed", []))
+        return f"{sanitized} [PII Sanitized: {summary['total']} items removed; types: {types_str}]"
+    return sanitized
+
 class WorkflowOrchestrator:
     """
     OnboardOS State Machine Orchestrator.
@@ -64,6 +79,11 @@ class WorkflowOrchestrator:
         duration_ms: float = 0.0
     ) -> AuditLogModel:
         """Appends an immutable audit log row to the database with cryptographic hash chaining."""
+        # Enforce strict privacy: never log raw or redacted PII values, only counts and types
+        input_summary = sanitize_audit_text(input_summary)
+        output_summary = sanitize_audit_text(output_summary)
+        reason = sanitize_audit_text(reason)
+
         last_log = (
             db.query(AuditLogModel)
             .filter(AuditLogModel.employee_id == employee_id)

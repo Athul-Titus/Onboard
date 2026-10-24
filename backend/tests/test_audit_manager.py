@@ -3,9 +3,11 @@ from backend.app.db import SessionLocal
 from backend.app.orchestrator import orchestrator
 from backend.app.models import EmployeeModel, AuditLogModel, AssignmentModel, IdentityProposalModel
 
+import uuid
 def test_manager_actions_logged_with_actor_timestamp_reason():
     db = SessionLocal()
-    emp_id = "test-mgr-emp-1"
+    uid = uuid.uuid4().hex[:8]
+    emp_id = f"test-mgr-emp-{uid}"
     try:
         emp = EmployeeModel(
             id=emp_id,
@@ -25,7 +27,7 @@ def test_manager_actions_logged_with_actor_timestamp_reason():
             db,
             emp_id,
             manager_name=manager,
-            edited_email="s.connor.custom@company.com"
+            edited_email=f"s.connor.{uid}@company.com"
         )
 
         # Run assignment proposal

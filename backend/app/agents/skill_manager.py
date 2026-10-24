@@ -213,6 +213,29 @@ class SkillManager:
     ) -> SkillMap:
         safe_resume, pii_summary = self.redact_pii_with_summary(resume_text or "General Software Engineer with experience in Python, APIs, and web services.")
 
+        # Log PII scrubbing action as separate audit entry with counts and types only (never raw values)
+        if db:
+            try:
+                from backend.app.orchestrator import orchestrator
+                types_str = ", ".join(pii_summary.get("types_removed", [])) or "None"
+                orchestrator.log_audit(
+                    db=db,
+                    employee_id=employee_id,
+                    agent="PII Scrubber",
+                    action="redact_pii",
+                    entry_type="agent_step",
+                    actor="Skill Manager",
+                    input_summary=f"Input resume ({len(resume_text or '')} chars)",
+                    output_summary=f"Total items removed: {pii_summary.get('total', 0)}, Types: {types_str}",
+                    reason=(
+                        f"Scrubbed {pii_summary.get('phone', 0)} phone, {pii_summary.get('email', 0)} personal email, "
+                        f"{pii_summary.get('address', 0)} address, {pii_summary.get('dob', 0)} DOB instances. "
+                        "Raw PII values discarded per privacy policy; only counts and types logged."
+                    )
+                )
+            except Exception:
+                pass
+
         # 1. Fetch GitHub evidence
         import time
         t0 = time.perf_counter()

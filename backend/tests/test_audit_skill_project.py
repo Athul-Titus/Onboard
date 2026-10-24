@@ -3,9 +3,10 @@ from backend.app.db import SessionLocal
 from backend.app.models import EmployeeModel, AuditLogModel, SkillMapModel, AssignmentModel
 from backend.app.orchestrator import orchestrator
 
+import uuid
 def test_skill_and_project_manager_audit_entries():
     db = SessionLocal()
-    emp_id = "test-sp-emp-1"
+    emp_id = f"test-sp-emp-{uuid.uuid4().hex[:8]}"
     try:
         emp = EmployeeModel(
             id=emp_id,
