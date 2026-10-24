@@ -233,9 +233,10 @@ class GuideManager:
             for c in chunks[:3]:
                 clean = self._clean_text(c["content"])
                 first_line = clean.splitlines()[0] if clean else c["section"]
+                actionable_detail = self._first_complete_sentence(first_line, 160)
                 items.append(GuideItem(
                     text=f"Complete the {c['section'].lower()} steps as documented.",
-                    detail=first_line[:160] if first_line else None,
+                    detail=actionable_detail if actionable_detail else None,
                     citation=Citation(
                         doc=c["doc"],
                         section=c["section"],
@@ -292,28 +293,72 @@ class GuideManager:
         return sections
 
     # -----------------------------------------------------------------
-    # Verifier pass: check every citation exists; return counts
+    # Verifier pass: check every citation exists & supports statement
     # -----------------------------------------------------------------
-    def _verifier_pass(self, guide: Guide):
+    def _verifier_pass(self, guide: Guide, drop_unsupported: bool = True):
         total = 0
         verified = 0
         for section in guide.sections:
+            kept_items: List[GuideItem] = []
             for item in section.items:
                 if item.citation:
                     total += 1
                     exists = retriever.verify_citation(item.citation.doc, item.citation.section)
-                    if exists:
+                    chunk_content = retriever.get_chunk_content(item.citation.doc, item.citation.section) if exists else None
+
+                    supported = False
+                    if exists and chunk_content:
+                        item_words = set(re.findall(r"\b[a-zA-Z]{3,}\b", item.text.lower()))
+                        stop_words = {
+                            "the", "and", "for", "with", "your", "this", "that", "from",
+                            "are", "you", "our", "all", "per", "ask", "not", "have",
+                            "will", "can", "into", "lead", "steps", "complete", "documented",
+                            "must", "should", "their", "them", "about", "each", "other"
+                        }
+                        key_words = item_words - stop_words
+                        content_lower = (chunk_content + " " + item.citation.section + " " + item.citation.doc).lower()
+                        matches = [w for w in key_words if w in content_lower]
+                        if len(matches) >= 1 or len(key_words) == 0:
+                            supported = True
+
+                    if exists and supported:
                         verified += 1
+                        item.status = "grounded"
+                        kept_items.append(item)
                     else:
-                        # Revoke bad citation — keep text but flag it
-                        item.status = "not_documented"
-                        item.citation = None
-                        item.text = f"{item.text} [Source unverified — ask your lead]"
+                        if drop_unsupported:
+                            # Drop unsupported line
+                            continue
+                        else:
+                            # Flag unsupported line
+                            item.status = "not_documented"
+                            item.citation = None
+                            item.text = f"{item.text} [Source unverified — ask your lead]"
+                            kept_items.append(item)
+                else:
+                    kept_items.append(item)
+            section.items = kept_items
         return guide, verified, total
 
     # -----------------------------------------------------------------
     # Helpers
     # -----------------------------------------------------------------
+    def _first_complete_sentence(self, text: str, max_chars: int = 160) -> str:
+        """Extracts first complete sentence without mid-sentence truncation."""
+        if not text:
+            return ""
+        text = text.strip()
+        match = re.search(r"^([^.!?]+[.!?])(?:\s|$)", text)
+        if match and len(match.group(1)) <= max_chars:
+            return match.group(1).strip()
+        if len(text) <= max_chars:
+            return text
+        cut = text[:max_chars]
+        idx = cut.rfind(" ")
+        if idx > 30:
+            return cut[:idx].rstrip(",;:-") + "."
+        return cut.rstrip(",;:-") + "."
+
     def _clean_text(self, text: str) -> str:
         """Strip markdown bold, blockquotes, and Sample Data disclaimer lines."""
         if not text:

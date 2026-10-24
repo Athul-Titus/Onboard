@@ -34,18 +34,37 @@ class HybridRetriever:
         self.tokenized_corpus: List[List[str]] = []
         self._initialized = False
 
-    def initialize(self):
-        """Loads and chunks all markdown files from the docs directory."""
-        if self._initialized:
+    @staticmethod
+    def clean_doc_text(text: str) -> str:
+        """Strip markdown bold/italic, blockquote markers, and drop Sample Data disclaimer lines."""
+        if not text:
+            return ""
+        # Remove bold/italic markers
+        text = re.sub(r"\*{1,3}(.*?)\*{1,3}", r"\1", text)
+        # Remove blockquote markers
+        text = re.sub(r"^\s*>\s*", "", text, flags=re.MULTILINE)
+        # Drop lines containing "Sample Data" or "synthetic" disclaimer
+        lines = [
+            ln for ln in text.splitlines()
+            if "sample data" not in ln.lower() and "synthetic" not in ln.lower()
+        ]
+        return "\n".join(lines).strip()
+
+    def initialize(self, force: bool = False):
+        """Loads, cleans, and chunks all markdown files from the docs directory."""
+        if self._initialized and not force:
             return
 
         docs_dir = settings.DOCS_DIR
         chunk_list: List[DocChunk] = []
 
-        for doc_file in docs_dir.glob("*.md"):
+        for doc_file in sorted(docs_dir.glob("*.md")):
             doc_name = doc_file.name
             with open(doc_file, "r", encoding="utf-8") as f:
                 text = f.read()
+
+            # Clean raw text: strip **, > and drop "Sample Data" / synthetic disclaimer lines
+            cleaned_text = self.clean_doc_text(text)
 
             # Identify team affiliation if any
             team = None
@@ -61,14 +80,18 @@ class HybridRetriever:
                 team = "Mobile Platform"
 
             # Split into sections based on ## headers
-            sections = re.split(r"\n(?=##\s+)", text)
+            sections = re.split(r"\n(?=##\s+)", cleaned_text)
             for idx, sec in enumerate(sections):
                 lines = sec.strip().splitlines()
                 if not lines:
                     continue
                 header_line = lines[0]
                 section_title = re.sub(r"^#+\s*", "", header_line).strip()
-                content = "\n".join(lines[1:]).strip() if len(lines) > 1 else section_title
+                content = "\n".join(lines[1:]).strip() if len(lines) > 1 else ""
+
+                # Clean ingestion: drop title-only or intro chunks with minimal content (< 30 chars)
+                if not content or len(content) < 30 or content.lower() == section_title.lower():
+                    continue
 
                 chunk_id = f"{doc_name}#{idx}"
                 chunk_list.append(DocChunk(
@@ -90,6 +113,11 @@ class HybridRetriever:
             self.bm25 = BM25Okapi(self.tokenized_corpus)
 
         self._initialized = True
+
+    def reindex(self):
+        """Forces a re-indexing pass with cleaned chunks."""
+        self._initialized = False
+        self.initialize(force=True)
 
     def _tokenize(self, text: str) -> List[str]:
         return re.findall(r"\w+", text.lower())
@@ -153,16 +181,30 @@ class HybridRetriever:
     def verify_citation(self, doc_name: str, section: str) -> bool:
         """Verifies that a cited document and section actually exist in the knowledge store."""
         self.initialize()
+        norm_doc = doc_name.lower()
+        if not norm_doc.endswith(".md"):
+            norm_doc = norm_doc + ".md"
+        norm_sec = section.lower().strip()
         for chunk in self.chunks:
-            if chunk.doc_name.lower() == doc_name.lower() and chunk.section.lower() == section.lower():
+            chunk_doc = chunk.doc_name.lower()
+            if not chunk_doc.endswith(".md"):
+                chunk_doc = chunk_doc + ".md"
+            if chunk_doc == norm_doc and chunk.section.lower().strip() == norm_sec:
                 return True
         return False
 
     def get_chunk_content(self, doc_name: str, section: str) -> Optional[str]:
         """Returns the full text content for a given document and section."""
         self.initialize()
+        norm_doc = doc_name.lower()
+        if not norm_doc.endswith(".md"):
+            norm_doc = norm_doc + ".md"
+        norm_sec = section.lower().strip()
         for chunk in self.chunks:
-            if chunk.doc_name.lower() == doc_name.lower() and chunk.section.lower() == section.lower():
+            chunk_doc = chunk.doc_name.lower()
+            if not chunk_doc.endswith(".md"):
+                chunk_doc = chunk_doc + ".md"
+            if chunk_doc == norm_doc and chunk.section.lower().strip() == norm_sec:
                 return chunk.content
         return None
 
