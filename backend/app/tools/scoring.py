@@ -6,7 +6,8 @@ from backend.app.schemas import ScoreBreakdown
 def compute_team_scores(
     hire_skills: Union[List[str], List[Dict[str, Any]], Any],
     teams: List[Dict[str, Any]],
-    projects: List[Dict[str, Any]]
+    projects: List[Dict[str, Any]],
+    custom_weights: Optional[Dict[str, float]] = None
 ) -> List[Dict[str, Any]]:
     """
     Deterministic scoring engine implementing the exact formula:
@@ -107,10 +108,10 @@ def compute_team_scores(
         learning_gap_val = round(len(missing_skills_list) / num_req, 4)
 
         # Term contributions
-        w_match = settings.SCORE_WEIGHT_SKILL_MATCH
-        w_gap = settings.SCORE_WEIGHT_GAP_COVERAGE
-        w_cap = settings.SCORE_WEIGHT_CAPACITY
-        w_learn = settings.SCORE_WEIGHT_LEARNING_GAP
+        w_match = custom_weights.get("skill_match", settings.SCORE_WEIGHT_SKILL_MATCH) if custom_weights else settings.SCORE_WEIGHT_SKILL_MATCH
+        w_gap = custom_weights.get("gap_coverage", settings.SCORE_WEIGHT_GAP_COVERAGE) if custom_weights else settings.SCORE_WEIGHT_GAP_COVERAGE
+        w_cap = custom_weights.get("capacity", settings.SCORE_WEIGHT_CAPACITY) if custom_weights else settings.SCORE_WEIGHT_CAPACITY
+        w_learn = custom_weights.get("learning_gap", settings.SCORE_WEIGHT_LEARNING_GAP) if custom_weights else settings.SCORE_WEIGHT_LEARNING_GAP
 
         contrib_match = round(w_match * skill_match_val, 4)
         contrib_gap = round(w_gap * gap_cov_val, 4)
