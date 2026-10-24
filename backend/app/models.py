@@ -19,6 +19,7 @@ class EmployeeModel(Base):
     resume_text = Column(Text, nullable=True)
     current_step = Column(String, default="identity")
     step_status_json = Column(Text, default="{}")
+    redaction_summary_json = Column(Text, nullable=True)
     created_at = Column(DateTime, default=utc_now)
     updated_at = Column(DateTime, default=utc_now, onupdate=utc_now)
 
