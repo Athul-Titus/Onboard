@@ -4,7 +4,7 @@ from typing import List, Dict, Any, Optional, Tuple
 from pydantic import BaseModel, Field
 
 from backend.app.config import settings
-from backend.app.schemas import SkillItem, SkillMap, SkillStatus
+from backend.app.schemas import SkillItem, SkillMap, SkillStatus, TeamGapAnalysis
 from backend.app.tools.github_tool import github_tool
 from backend.app.tools.ontology import ontology
 from backend.app.llm_client import LLMClient
@@ -259,15 +259,24 @@ class SkillManager:
                 signals_used=signals
             ))
 
-        # 4. Compute Gaps by Team
+        # 4. Compute Gaps by Team (required_skills, matched_skills, missing_skills, coverage_percent)
         hire_canonical_set = {s.skill.lower() for s in skill_items}
-        gaps_by_team: Dict[str, List[str]] = {}
+        gaps_by_team: Dict[str, TeamGapAnalysis] = {}
 
         for team in self.teams:
             tname = team["name"]
             reqs = team.get("required_skills", [])
+            matched = [r for r in reqs if r.lower() in hire_canonical_set]
             missing = [r for r in reqs if r.lower() not in hire_canonical_set]
-            gaps_by_team[tname] = missing
+            coverage = round((len(matched) / max(1, len(reqs))) * 100, 1)
+
+            gaps_by_team[tname] = TeamGapAnalysis(
+                team=tname,
+                required_skills=reqs,
+                matched_skills=matched,
+                missing_skills=missing,
+                coverage_percent=coverage
+            )
 
         github_summary = (
             f"Verified via @{gh_evidence.get('username')} across {total_repos} repos"

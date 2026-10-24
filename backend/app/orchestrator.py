@@ -374,7 +374,11 @@ class WorkflowOrchestrator:
         skill_gaps: List[str] = []
         if smap and smap.gaps_by_team_json:
             gaps_dict = json.loads(smap.gaps_by_team_json)
-            skill_gaps = gaps_dict.get(team_name, [])
+            val = gaps_dict.get(team_name, [])
+            if isinstance(val, dict):
+                skill_gaps = val.get("missing_skills", [])
+            elif isinstance(val, list):
+                skill_gaps = val
 
         self.update_step_status(db, emp, "guide", "running")
 

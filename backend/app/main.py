@@ -29,7 +29,8 @@ from backend.app.schemas import (
     Assignment,
     Guide,
     AuditEntry,
-    StepStatusInfo
+    StepStatusInfo,
+    TeamGapAnalysis
 )
 from backend.app.tools.directory import init_mock_directory
 from backend.app.orchestrator import orchestrator
@@ -193,11 +194,23 @@ def get_hire(id: str, db: Session = Depends(get_db)):
     if emp.skill_map:
         try:
             skills = json.loads(emp.skill_map.skills_json or "[]")
-            gaps = json.loads(emp.skill_map.gaps_by_team_json or "{}")
+            raw_gaps = json.loads(emp.skill_map.gaps_by_team_json or "{}")
+            formatted_gaps = {}
+            for tname, gval in raw_gaps.items():
+                if isinstance(gval, dict):
+                    formatted_gaps[tname] = TeamGapAnalysis(**gval)
+                elif isinstance(gval, list):
+                    formatted_gaps[tname] = TeamGapAnalysis(
+                        team=tname,
+                        required_skills=[],
+                        matched_skills=[],
+                        missing_skills=gval,
+                        coverage_percent=0.0
+                    )
             skill_map = SkillMap(
                 employee_id=emp.id,
                 skills=skills,
-                gaps_by_team=gaps
+                gaps_by_team=formatted_gaps
             )
         except Exception as e:
             logger.error(f"Error parsing skill map: {e}")

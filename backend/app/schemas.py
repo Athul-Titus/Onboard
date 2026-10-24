@@ -30,10 +30,17 @@ class SkillItem(BaseModel):
     evidence: List[str] = Field(default_factory=list)
     signals_used: Dict[str, Any] = Field(default_factory=dict)
 
+class TeamGapAnalysis(BaseModel):
+    team: str
+    required_skills: List[str] = Field(default_factory=list)
+    matched_skills: List[str] = Field(default_factory=list)
+    missing_skills: List[str] = Field(default_factory=list)
+    coverage_percent: float = 0.0
+
 class SkillMap(BaseModel):
     employee_id: str
     skills: List[SkillItem] = Field(default_factory=list)
-    gaps_by_team: Dict[str, Any] = Field(default_factory=dict)
+    gaps_by_team: Dict[str, TeamGapAnalysis] = Field(default_factory=dict)
     verification_state: str = "resume-only"  # "verified" | "resume-only"
     github_summary: Optional[str] = None
 
