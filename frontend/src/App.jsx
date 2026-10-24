@@ -42,6 +42,13 @@ export default function App() {
   const [skillEvidenceModal, setSkillEvidenceModal] = useState(null);
   const [activeTab, setActiveTab] = useState('workflow'); // 'workflow' | 'skills' | 'guide' | 'audit'
 
+  // Audit Log UI state
+  const [auditAgentFilter, setAuditAgentFilter] = useState('all');
+  const [auditTypeFilter, setAuditTypeFilter] = useState('all');
+  const [expandedAuditLogs, setExpandedAuditLogs] = useState({});
+  const [auditVerification, setAuditVerification] = useState(null);
+  const [verifyingAudit, setVerifyingAudit] = useState(false);
+
   // Intake form state
   const [formData, setFormData] = useState({
     name: 'John Doe',
@@ -379,6 +386,74 @@ Contact: +1 (555) 987-1234, 88 Mission Boulevard, Seattle WA, elena.rostova@outl
     window.open(`${API_BASE}/hires/${selectedHireId}/export`, '_blank');
   };
 
+  // Format readable timestamp
+  const formatTimestamp = (isoStr) => {
+    if (!isoStr) return '';
+    try {
+      const d = new Date(isoStr);
+      return d.toLocaleString(undefined, {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: true
+      });
+    } catch {
+      return isoStr;
+    }
+  };
+
+  // Format step duration
+  const formatDuration = (ms) => {
+    if (ms === undefined || ms === null || ms <= 0) return null;
+    if (ms < 1000) return `${Math.round(ms)}ms`;
+    return `${(ms / 1000).toFixed(2)}s`;
+  };
+
+  // Export audit log to formatted JSON file
+  const handleExportAuditJson = () => {
+    if (!hireDetail?.audit_logs) return;
+    const jsonStr = JSON.stringify(hireDetail.audit_logs, null, 2);
+    const blob = new Blob([jsonStr], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `audit_log_${hireDetail.employee?.name?.toLowerCase().replace(/\s+/g, '_') || selectedHireId}.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  // Verify hash chain integrity against backend endpoint
+  const handleVerifyAuditIntegrity = async () => {
+    if (!selectedHireId) return;
+    setVerifyingAudit(true);
+    try {
+      const res = await fetch(`${API_BASE}/hires/${selectedHireId}/audit/verify`);
+      if (res.ok) {
+        const data = await res.json();
+        setAuditVerification(data);
+      } else {
+        setAuditVerification({
+          valid: false,
+          chain_status: 'ERROR',
+          message: 'Failed to verify audit log integrity with server.'
+        });
+      }
+    } catch (e) {
+      setAuditVerification({
+        valid: false,
+        chain_status: 'ERROR',
+        message: e.message
+      });
+    } finally {
+      setVerifyingAudit(false);
+    }
+  };
+
   const getStatusBadge = (status) => {
     switch (status) {
       case 'done':
@@ -550,7 +625,7 @@ Contact: +1 (555) 987-1234, 88 Mission Boulevard, Seattle WA, elena.rostova@outl
             }`}
           >
             <ShieldCheck className="w-4 h-4" />
-            Audit Trail & Guardrails
+            Audit Log
           </button>
         </div>
 
@@ -1194,37 +1269,285 @@ Contact: +1 (555) 987-1234, 88 Mission Boulevard, Seattle WA, elena.rostova@outl
         )}
 
 
-        {/* TAB 4: AUDIT TRAIL */}
+        {/* TAB 4: AUDIT LOG */}
         {activeTab === 'audit' && (
           <div className="bg-slate-900 border border-slate-800 rounded-lg p-5 space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+            {/* Header & Action Controls */}
+            <div className="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-slate-800">
               <div>
-                <h3 className="font-bold text-white text-base">Immutable Audit Log</h3>
-                <p className="text-xs text-slate-400">Full auditability of every agent action, tool invocation, and manager approval.</p>
+                <h3 className="font-bold text-white text-base flex items-center gap-2">
+                  <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                  Audit Log
+                </h3>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  Append-only cryptographic audit trail recording tool invocations, agent steps, manager actions, and failure recovery.
+                </p>
               </div>
-              <span className="text-xs text-slate-400 font-mono">
-                {hireDetail?.audit_logs?.length || 0} Events Recorded
+
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={handleVerifyAuditIntegrity}
+                  disabled={verifyingAudit || !selectedHireId}
+                  className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-950 text-emerald-300 border border-emerald-800 hover:bg-emerald-900 transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                  title="Verify SHA-256 cryptographic hash chain integrity"
+                >
+                  {verifyingAudit ? (
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <ShieldCheck className="w-3.5 h-3.5" />
+                  )}
+                  Verify Integrity
+                </button>
+
+                <button
+                  onClick={handleExportAuditJson}
+                  disabled={!hireDetail?.audit_logs?.length}
+                  className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-950 text-indigo-300 border border-indigo-800 hover:bg-indigo-900 transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                  title="Export audit trail entries as JSON"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  Export JSON
+                </button>
+
+                <span className="text-xs text-slate-400 font-mono bg-slate-950 px-2.5 py-1 rounded border border-slate-800">
+                  {hireDetail?.audit_logs?.length || 0} Events
+                </span>
+              </div>
+            </div>
+
+            {/* Verification Status Banner */}
+            {auditVerification && (
+              <div
+                className={`p-3 rounded-lg border text-xs flex items-center justify-between gap-3 ${
+                  auditVerification.valid
+                    ? 'bg-emerald-950/70 border-emerald-700/60 text-emerald-300'
+                    : 'bg-rose-950/70 border-rose-700/60 text-rose-300'
+                }`}
+              >
+                <div className="flex items-center gap-2.5">
+                  {auditVerification.valid ? (
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                  ) : (
+                    <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
+                  )}
+                  <div>
+                    <span className="font-bold">
+                      {auditVerification.valid
+                        ? 'Cryptographic Hash Chain Verified (INTACT)'
+                        : 'Audit Log Integrity Compromised!'}
+                    </span>
+                    <p className="text-[11px] opacity-90 mt-0.5">
+                      {auditVerification.message} (Verified {auditVerification.total_entries} blocks)
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setAuditVerification(null)}
+                  className="text-slate-400 hover:text-slate-200 cursor-pointer p-1"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            )}
+
+            {/* Filter Controls Row */}
+            <div className="flex flex-wrap items-center justify-between gap-3 bg-slate-950/60 p-3 rounded-lg border border-slate-800/80 text-xs">
+              <div className="flex flex-wrap items-center gap-3">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-slate-400 font-medium">Agent:</span>
+                  <select
+                    value={auditAgentFilter}
+                    onChange={(e) => setAuditAgentFilter(e.target.value)}
+                    className="bg-slate-900 border border-slate-700 text-slate-200 rounded px-2 py-1 text-xs focus:outline-none focus:border-indigo-500"
+                  >
+                    <option value="all">All Agents ({hireDetail?.audit_logs?.length || 0})</option>
+                    {Array.from(new Set(hireDetail?.audit_logs?.map((l) => l.agent) || [])).map((agent) => (
+                      <option key={agent} value={agent}>
+                        {agent}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="flex items-center gap-1.5">
+                  <span className="text-slate-400 font-medium">Event Type:</span>
+                  <select
+                    value={auditTypeFilter}
+                    onChange={(e) => setAuditTypeFilter(e.target.value)}
+                    className="bg-slate-900 border border-slate-700 text-slate-200 rounded px-2 py-1 text-xs focus:outline-none focus:border-indigo-500"
+                  >
+                    <option value="all">All Event Types</option>
+                    <option value="tool_invocation">Tool Invocations</option>
+                    <option value="manager_action">Manager Actions</option>
+                    <option value="agent_step">Agent Steps</option>
+                    <option value="failure_recovery">Failure & Recovery</option>
+                  </select>
+                </div>
+
+                {(auditAgentFilter !== 'all' || auditTypeFilter !== 'all') && (
+                  <button
+                    onClick={() => {
+                      setAuditAgentFilter('all');
+                      setAuditTypeFilter('all');
+                    }}
+                    className="text-[11px] text-indigo-400 hover:text-indigo-300 underline font-medium cursor-pointer"
+                  >
+                    Reset Filters
+                  </button>
+                )}
+              </div>
+
+              <span className="text-slate-500 text-[11px]">
+                Showing{' '}
+                {
+                  (hireDetail?.audit_logs || []).filter((log) => {
+                    const matchesAgent = auditAgentFilter === 'all' || log.agent === auditAgentFilter;
+                    const matchesType = auditTypeFilter === 'all' || (log.entry_type || 'agent_step') === auditTypeFilter;
+                    return matchesAgent && matchesType;
+                  }).length
+                }{' '}
+                of {hireDetail?.audit_logs?.length || 0} entries
               </span>
             </div>
 
-            <div className="space-y-3 max-h-[600px] overflow-y-auto pr-1">
-              {hireDetail?.audit_logs?.map((log, idx) => (
-                <div key={idx} className="bg-slate-950 border border-slate-800 p-3.5 rounded space-y-1.5 text-xs">
-                  <div className="flex items-center justify-between text-slate-400">
-                    <span className="font-semibold text-indigo-400">{log.agent} › {log.action}</span>
-                    <span className="font-mono text-[11px] text-slate-500">{log.timestamp}</span>
-                  </div>
-                  <div className="text-slate-300">
-                    <strong className="text-slate-400">Input:</strong> {log.input_summary}
-                  </div>
-                  <div className="text-slate-300">
-                    <strong className="text-slate-400">Output:</strong> {log.output_summary}
-                  </div>
-                  <div className="text-slate-400 italic">
-                    <strong className="text-slate-400 not-italic">Rationale:</strong> {log.reason}
-                  </div>
+            {/* Event List */}
+            <div className="space-y-3 max-h-[640px] overflow-y-auto pr-1">
+              {(hireDetail?.audit_logs || [])
+                .filter((log) => {
+                  const matchesAgent = auditAgentFilter === 'all' || log.agent === auditAgentFilter;
+                  const matchesType = auditTypeFilter === 'all' || (log.entry_type || 'agent_step') === auditTypeFilter;
+                  return matchesAgent && matchesType;
+                })
+                .map((log, idx) => {
+                  const logKey = log.id || `${log.timestamp}-${idx}`;
+                  const isExpanded = Boolean(expandedAuditLogs[logKey]);
+                  const isLongReason = log.reason && log.reason.length > 180;
+                  const formattedDuration = formatDuration(log.duration_ms);
+
+                  // Badge config based on entry_type
+                  let typeBadge = (
+                    <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-blue-950 text-blue-300 border border-blue-800/60">
+                      Agent Step
+                    </span>
+                  );
+                  if (log.entry_type === 'tool_invocation') {
+                    typeBadge = (
+                      <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-950 text-amber-300 border border-amber-800/60">
+                        Tool Call
+                      </span>
+                    );
+                  } else if (log.entry_type === 'manager_action') {
+                    typeBadge = (
+                      <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-purple-950 text-purple-300 border border-purple-800/60">
+                        Manager Action
+                      </span>
+                    );
+                  } else if (log.entry_type === 'failure_recovery') {
+                    typeBadge = (
+                      <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-rose-950 text-rose-300 border border-rose-800/60">
+                        Failure & Recovery
+                      </span>
+                    );
+                  }
+
+                  return (
+                    <div
+                      key={logKey}
+                      className="bg-slate-950 border border-slate-800 p-4 rounded-lg space-y-2.5 text-xs hover:border-slate-700 transition"
+                    >
+                      {/* Top Header Row */}
+                      <div className="flex flex-wrap items-center justify-between gap-2 text-slate-400">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="font-semibold text-indigo-400">{log.agent}</span>
+                          <span className="text-slate-500 font-mono text-[11px]">› {log.action}</span>
+                          {typeBadge}
+                          {log.actor && log.actor !== 'System' && (
+                            <span className="px-1.5 py-0.5 rounded text-[10px] bg-slate-800 text-slate-300 border border-slate-700">
+                              Actor: {log.actor}
+                            </span>
+                          )}
+                          {formattedDuration && (
+                            <span className="px-1.5 py-0.5 rounded text-[10px] font-mono bg-emerald-950/70 text-emerald-400 border border-emerald-800/50 flex items-center gap-1">
+                              <Clock className="w-2.5 h-2.5" />
+                              {formattedDuration}
+                            </span>
+                          )}
+                        </div>
+
+                        <span className="font-mono text-[11px] text-slate-400" title={log.timestamp}>
+                          {formatTimestamp(log.timestamp)}
+                        </span>
+                      </div>
+
+                      {/* Input Summary */}
+                      <div className="text-slate-300 bg-slate-900/40 p-2.5 rounded border border-slate-800/60">
+                        <strong className="text-slate-400 font-medium mr-1.5">Input:</strong>
+                        <span className="font-mono text-slate-300 text-[11px] break-all">{log.input_summary}</span>
+                      </div>
+
+                      {/* Output Summary */}
+                      <div className="text-slate-300 bg-slate-900/40 p-2.5 rounded border border-slate-800/60">
+                        <strong className="text-slate-400 font-medium mr-1.5">Output:</strong>
+                        <span className="text-slate-200 leading-relaxed">{log.output_summary}</span>
+                      </div>
+
+                      {/* Expandable Rationale (no truncation) */}
+                      <div className="bg-slate-900/30 p-2.5 rounded border border-slate-800/40 text-slate-300">
+                        <div className="flex items-start justify-between gap-2">
+                          <div>
+                            <strong className="text-indigo-300 font-medium mr-1.5">Rationale:</strong>
+                            <span className="text-slate-300 leading-relaxed whitespace-pre-wrap">
+                              {isExpanded || !isLongReason ? log.reason : `${log.reason.slice(0, 180)}...`}
+                            </span>
+                          </div>
+                          {isLongReason && (
+                            <button
+                              onClick={() =>
+                                setExpandedAuditLogs((prev) => ({
+                                  ...prev,
+                                  [logKey]: !prev[logKey],
+                                }))
+                              }
+                              className="text-[11px] text-indigo-400 hover:text-indigo-300 underline font-semibold shrink-0 cursor-pointer ml-2"
+                            >
+                              {isExpanded ? 'Collapse' : 'Expand full rationale'}
+                            </button>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Cryptographic Hash Chain Footer */}
+                      {(log.entry_hash || log.previous_hash) && (
+                        <div className="pt-2 border-t border-slate-900 flex flex-wrap items-center justify-between text-[10px] font-mono text-slate-500 gap-2">
+                          <div className="flex flex-wrap items-center gap-3">
+                            <span title={log.previous_hash || 'Genesis'}>
+                              <span className="text-slate-600">PREV:</span>{' '}
+                              <span className="text-slate-400">
+                                {log.previous_hash ? `${log.previous_hash.slice(0, 14)}...` : '000000000000... (GENESIS)'}
+                              </span>
+                            </span>
+                            <span title={log.entry_hash || 'Unhashed'}>
+                              <span className="text-slate-600">HASH:</span>{' '}
+                              <span className="text-slate-400">
+                                {log.entry_hash ? `${log.entry_hash.slice(0, 14)}...` : 'UNHASHED'}
+                              </span>
+                            </span>
+                          </div>
+                          <span className="text-emerald-500/80 font-sans text-[10px] flex items-center gap-1">
+                            <ShieldCheck className="w-3 h-3" /> Append-Only
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+
+              {(hireDetail?.audit_logs || []).length === 0 && (
+                <div className="p-8 text-center text-slate-500 bg-slate-950 border border-slate-800 rounded-lg">
+                  <ShieldCheck className="w-8 h-8 mx-auto mb-2 text-slate-700" />
+                  <p>No audit log events recorded for this hire yet.</p>
                 </div>
-              ))}
+              )}
             </div>
           </div>
         )}
