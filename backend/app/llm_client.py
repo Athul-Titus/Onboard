@@ -46,7 +46,10 @@ class LLMClient:
         system_prompt: str,
         user_prompt: str,
         response_model: Type[T],
-        fallback_factory: Optional[Any] = None
+        fallback_factory: Optional[Any] = None,
+        employee_id: Optional[str] = None,
+        db: Optional[Any] = None,
+        agent_name: str = "LLM Service"
     ) -> T:
         """
         Executes an LLM call enforcing structured Pydantic output.
@@ -71,6 +74,51 @@ class LLMClient:
                 logger.warning(
                     f"LLM attempt {attempt + 1} failed validation: {exc}. Retrying with feedback..."
                 )
+
+                if db and employee_id:
+                    try:
+                        from backend.app.orchestrator import orchestrator
+                        is_timeout = "timeout" in str(exc).lower() or "timed out" in str(exc).lower() or isinstance(exc, TimeoutError)
+                        if is_timeout:
+                            orchestrator.log_audit(
+                                db=db,
+                                employee_id=employee_id,
+                                agent=agent_name,
+                                action="timeout",
+                                entry_type="failure_recovery",
+                                actor="System",
+                                input_summary=f"Attempt {attempt + 1}: Provider request timed out after {self.timeout}s",
+                                output_summary="Provider request timeout",
+                                reason=f"LLM provider call timed out after {self.timeout}s: {str(exc)}"
+                            )
+                        else:
+                            orchestrator.log_audit(
+                                db=db,
+                                employee_id=employee_id,
+                                agent=agent_name,
+                                action="schema_validation_failed",
+                                entry_type="failure_recovery",
+                                actor="System",
+                                input_summary=f"Attempt {attempt + 1}: Validating against schema '{response_model.__name__}'",
+                                output_summary=f"Schema validation error: {str(exc)[:120]}",
+                                reason=f"Output failed strict Pydantic validation: {str(exc)}"
+                            )
+
+                        if attempt < settings.LLM_MAX_RETRIES:
+                            orchestrator.log_audit(
+                                db=db,
+                                employee_id=employee_id,
+                                agent=agent_name,
+                                action="retry_initiated",
+                                entry_type="failure_recovery",
+                                actor="System",
+                                input_summary=f"Feedback retry {attempt + 2} of {1 + settings.LLM_MAX_RETRIES}",
+                                output_summary="Dispatched prompt with error traceback feedback",
+                                reason="Automatic self-healing retry triggered to resolve schema validation failure."
+                            )
+                    except Exception:
+                        pass
+
                 # Feed the error back to the model for attempt 2
                 current_user_prompt = (
                     f"{user_prompt}\n\n"
@@ -81,6 +129,23 @@ class LLMClient:
 
         # If both attempts fail, use fallback factory or mock
         logger.error(f"All LLM attempts failed. Falling back to structured default. Error: {last_error}")
+        if db and employee_id and last_error:
+            try:
+                from backend.app.orchestrator import orchestrator
+                orchestrator.log_audit(
+                    db=db,
+                    employee_id=employee_id,
+                    agent=agent_name,
+                    action="fallback_recovered",
+                    entry_type="failure_recovery",
+                    actor="System",
+                    input_summary=f"All {1 + settings.LLM_MAX_RETRIES} attempts failed for {response_model.__name__}",
+                    output_summary="Activated structured deterministic fallback",
+                    reason=f"Graceful recovery via fallback schema following LLM failure: {last_error}"
+                )
+            except Exception:
+                pass
+
         if fallback_factory:
             return fallback_factory()
         return self._mock_call(user_prompt, response_model)

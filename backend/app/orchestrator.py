@@ -178,10 +178,12 @@ class WorkflowOrchestrator:
                 db,
                 employee_id=employee_id,
                 agent="Identity Agent",
-                action="propose_email_failed",
+                action="needs_attention",
+                entry_type="failure_recovery",
+                actor="System",
                 input_summary=f"Full Name: '{emp.name}'",
-                output_summary="Failed to compute identity",
-                reason=str(exc)
+                output_summary="Identity step transitioned to 'needs_attention'",
+                reason=f"Identity step failed: {str(exc)}"
             )
             raise
 
@@ -302,10 +304,12 @@ class WorkflowOrchestrator:
                 db,
                 employee_id=employee_id,
                 agent="Skill Manager",
-                action="extract_skills_failed",
+                action="needs_attention",
+                entry_type="failure_recovery",
+                actor="System",
                 input_summary=f"Resume and GitHub for {emp.name}",
-                output_summary="Failed to extract skills",
-                reason=str(exc)
+                output_summary="Skills extraction step transitioned to 'needs_attention'",
+                reason=f"Skills extraction step failed: {str(exc)}"
             )
             raise
 
@@ -364,6 +368,17 @@ class WorkflowOrchestrator:
         except Exception as exc:
             logger.error(f"Error in assignment step: {exc}")
             self.update_step_status(db, emp, "assignment", "needs_attention", error=str(exc))
+            self.log_audit(
+                db,
+                employee_id=employee_id,
+                agent="Project Manager",
+                action="needs_attention",
+                entry_type="failure_recovery",
+                actor="System",
+                input_summary=f"Candidate skills for {emp.name}",
+                output_summary="Assignment step transitioned to 'needs_attention'",
+                reason=f"Assignment step failed: {str(exc)}"
+            )
             raise
 
     def approve_assignment_step(self, db: Session, employee_id: str, manager_name: str) -> AssignmentModel:
@@ -489,6 +504,17 @@ class WorkflowOrchestrator:
         except Exception as exc:
             logger.error(f"Error in guide step: {exc}")
             self.update_step_status(db, emp, "guide", "needs_attention", error=str(exc))
+            self.log_audit(
+                db,
+                employee_id=employee_id,
+                agent="Guide Manager",
+                action="needs_attention",
+                entry_type="failure_recovery",
+                actor="System",
+                input_summary=f"Personalised guide generation for {emp.name}",
+                output_summary="Guide step transitioned to 'needs_attention'",
+                reason=f"Guide generation step failed: {str(exc)}"
+            )
             raise
 
     def run_full_workflow(self, db: Session, employee_id: str):

@@ -50,7 +50,7 @@ class IdentityAgent:
         attempts_log: List[str] = []
         collision_detected = False
 
-        for rule in self.rules:
+        for idx, rule in enumerate(self.rules):
             rule_id = rule["id"]
             rule_name = rule["name"]
             template = rule["template"]
@@ -107,9 +107,27 @@ class IdentityAgent:
                     collision_reason.append(f"email '{email_candidate}' is already taken")
                 if not username_ok:
                     collision_reason.append(f"username '{username_candidate}' is already taken")
+
+                next_rule_name = self.rules[idx + 1]["name"] if idx + 1 < len(self.rules) else "fallback_random_suffix"
                 attempts_log.append(
-                    f"Collision on rule '{rule_name}': {', '.join(collision_reason)}. Trying next rule..."
+                    f"Collision on rule '{rule_name}': {', '.join(collision_reason)}. Trying next rule: '{next_rule_name}'..."
                 )
+
+                try:
+                    from backend.app.orchestrator import orchestrator
+                    orchestrator.log_audit(
+                        db=db,
+                        employee_id=employee_id,
+                        agent="Identity Agent",
+                        action="email_collision_resolved",
+                        entry_type="failure_recovery",
+                        actor="Identity Agent",
+                        input_summary=f"Rule tried: '{rule_name}' ({email_candidate}) -> Collision ({', '.join(collision_reason)})",
+                        output_summary=f"Next rule: '{next_rule_name}'",
+                        reason=f"Collision detected on rule '{rule_name}'. Advancing to next naming policy rule '{next_rule_name}'."
+                    )
+                except Exception:
+                    pass
 
         # Fallback if all standard rules collided: random 4-digit suffix
         import random
@@ -117,6 +135,22 @@ class IdentityAgent:
         fallback_user = f"{first}.{last}{rand_num}"
         fallback_email = f"{fallback_user}@{self.domain}"
         attempts_log.append(f"All standard rules exhausted. Generated collision-free fallback '{fallback_email}'.")
+
+        try:
+            from backend.app.orchestrator import orchestrator
+            orchestrator.log_audit(
+                db=db,
+                employee_id=employee_id,
+                agent="Identity Agent",
+                action="email_collision_fallback_recovered",
+                entry_type="failure_recovery",
+                actor="Identity Agent",
+                input_summary=f"All {len(self.rules)} standard naming policy rules collided",
+                output_summary=f"Generated collision-free fallback: '{fallback_email}'",
+                reason="Exhausted standard naming policy rules; recovered via randomized numeric suffix."
+            )
+        except Exception:
+            pass
 
         return IdentityProposal(
             employee_id=employee_id,
