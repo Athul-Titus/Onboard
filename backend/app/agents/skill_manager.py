@@ -193,7 +193,7 @@ class SkillManager:
         resume_text: Optional[str],
         github_username: Optional[str]
     ) -> SkillMap:
-        safe_resume = self.redact_pii(resume_text or "General Software Engineer with experience in Python, APIs, and web services.")
+        safe_resume, pii_summary = self.redact_pii_with_summary(resume_text or "General Software Engineer with experience in Python, APIs, and web services.")
 
         # 1. Fetch GitHub evidence
         gh_evidence = github_tool.get_user_evidence(github_username)
@@ -326,7 +326,8 @@ class SkillManager:
             skills=skill_items,
             gaps_by_team=gaps_by_team,
             verification_state=gh_state,
-            github_summary=github_summary
+            github_summary=github_summary,
+            redaction_summary=RedactionSummary(**pii_summary)
         )
 
 skill_manager = SkillManager()
