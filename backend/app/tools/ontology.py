@@ -8,6 +8,7 @@ class SkillOntology:
     1. Exact alias dictionary lookup (O(1))
     2. Case-insensitive substring matching
     3. Normalization fallback
+    Provides categories and alias mappings.
     """
 
     def __init__(self):
@@ -19,12 +20,20 @@ class SkillOntology:
         # Build alias lookup map: lowercase_alias -> canonical_name
         self.alias_map: Dict[str, str] = {}
         self.canonical_skills: set = set()
+        self.skill_categories: Dict[str, str] = {}
+        self.canonical_to_aliases: Dict[str, List[str]] = {}
 
         for item in self.skills_list:
             canonical = item["name"]
+            cat = item.get("category", "General Engineering")
+            aliases = item.get("aliases", [])
+
             self.canonical_skills.add(canonical)
+            self.skill_categories[canonical.lower()] = cat
+            self.canonical_to_aliases[canonical.lower()] = [canonical] + aliases
+
             self.alias_map[canonical.lower()] = canonical
-            for alias in item.get("aliases", []):
+            for alias in aliases:
                 self.alias_map[alias.lower()] = canonical
 
     def normalize(self, raw_skill: str) -> Tuple[str, bool]:
@@ -46,6 +55,14 @@ class SkillOntology:
                 return canonical, True
 
         return clean, False
+
+    def get_category(self, canonical_name: str) -> str:
+        """Returns the canonical category for a skill (e.g. Languages, Backend Frameworks, Cloud & DevOps)."""
+        return self.skill_categories.get(canonical_name.lower(), "General Engineering")
+
+    def get_aliases(self, canonical_name: str) -> List[str]:
+        """Returns all recognized aliases for a canonical skill."""
+        return self.canonical_to_aliases.get(canonical_name.lower(), [canonical_name])
 
     def get_all_canonical(self) -> List[str]:
         return sorted(list(self.canonical_skills))

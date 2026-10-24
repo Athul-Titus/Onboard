@@ -45,6 +45,58 @@ class SkillManager:
         redacted = re.sub(r"\d+\s+[A-Za-z0-9\s,]+(Street|St|Avenue|Ave|Road|Rd|Boulevard|Blvd|Drive|Dr)", "[ADDRESS REDACTED]", redacted)
         return redacted
 
+    def find_resume_evidence(self, resume_text: str, canonical_skill: str) -> List[str]:
+        """
+        Extracts specific supporting lines/quotes from the resume with section/project context.
+        No generic evidence strings.
+        """
+        if not resume_text or not resume_text.strip():
+            return ["[No resume text provided]"]
+
+        aliases = ontology.get_aliases(canonical_skill)
+        lines = [line.strip() for line in resume_text.splitlines() if line.strip()]
+
+        current_section = "General"
+        evidence_quotes: List[str] = []
+
+        section_patterns = [
+            (r"(?i)^(skills|technical skills|technologies)\b", "Skills"),
+            (r"(?i)^(projects|key projects|project experience)\b", "Projects"),
+            (r"(?i)^(experience|work experience|employment|history)\b", "Experience"),
+            (r"(?i)^(certifications|credentials|certificates)\b", "Certifications"),
+            (r"(?i)^(education|academic background)\b", "Education"),
+            (r"(?i)^(summary|profile|about)\b", "Summary"),
+        ]
+
+        for line in lines:
+            for pat, sec_name in section_patterns:
+                if re.search(pat, line):
+                    current_section = sec_name
+                    break
+
+            matched_alias = None
+            for alias in aliases:
+                clean_alias = re.escape(alias)
+                pattern = rf"(?i)\b{clean_alias}\b" if alias.isalnum() else rf"(?i){clean_alias}"
+                if re.search(pattern, line):
+                    matched_alias = alias
+                    break
+
+            if matched_alias:
+                quote = line if len(line) <= 120 else line[:117] + "..."
+                evidence_quotes.append(f'[{current_section}] "{quote}"')
+
+        if not evidence_quotes:
+            return [f'[Resume] Inferred from candidate background without direct line quote']
+
+        seen = set()
+        unique_quotes = []
+        for q in evidence_quotes:
+            if q not in seen:
+                seen.add(q)
+                unique_quotes.append(q)
+        return unique_quotes
+
     def extract_skills(
         self,
         employee_id: str,
@@ -98,6 +150,9 @@ class SkillManager:
             status: SkillStatus = "claimed"
             confidence: float = 0.80
 
+            # Find specific resume quote evidence
+            resume_evidence = self.find_resume_evidence(safe_resume, canonical)
+
             # Verify against GitHub
             if canon_lower in gh_languages:
                 status = "verified"
@@ -113,9 +168,8 @@ class SkillManager:
                 confidence = 0.95
                 evidence_list.append(f"Certified: Listed under verified credentials ({certs_str[:40]})")
 
-            # Claimed status fallback
-            if status == "claimed":
-                evidence_list.append("Claimed on candidate resume without external repository verification")
+            # Add the exact resume line quotes
+            evidence_list.extend(resume_evidence)
 
             skill_items.append(SkillItem(
                 skill=canonical,
