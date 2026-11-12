@@ -33,6 +33,8 @@ class Settings(BaseSettings):
 
     # GitHub
     GITHUB_TOKEN: str = ""
+    GITHUB_MAX_REPOS: int = 100          # repos to inspect per user (paginated)
+    GITHUB_CACHE_TTL_SECONDS: int = 86400  # 24-hour in-memory result cache
 
     # Orchestrator & Scoring Weights
     SCORE_WEIGHT_SKILL_MATCH: float = 0.40

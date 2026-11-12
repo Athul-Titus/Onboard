@@ -50,6 +50,7 @@ from backend.app.schemas import (
 )
 from backend.app.tools.directory import init_mock_directory
 from backend.app.tools.seed_data import init_demo_database
+from backend.app.tools.retrieval import retriever
 from backend.app.orchestrator import orchestrator
 from backend.app.agents.skill_manager import skill_manager
 
@@ -103,11 +104,26 @@ ws_manager = ConnectionManager()
 
 @app.on_event("startup")
 def startup_event():
-    """Initializes tables and seeds the mock directory and demo employees."""
+    """Initializes tables, seeds the mock directory, demo employees, and warms up the RAG vector index."""
     with next(get_db()) as db:
         init_mock_directory(db)
         init_demo_database(db)
     logger.info("OnboardOS backend initialized with seed directory and demo hires.")
+
+    # Warm up RAG: load docs, build BM25, embed new chunks to ChromaDB
+    # Runs in background so startup is not blocked if OpenAI is slow
+    import threading
+    def _warm_rag():
+        try:
+            retriever.initialize()
+            stats = retriever.get_stats()
+            logger.info(
+                f"RAG warm-up complete: {stats['total_chunks']} chunks, "
+                f"{stats['chroma_vectors']} vectors in ChromaDB."
+            )
+        except Exception as e:
+            logger.error(f"RAG warm-up failed (non-fatal): {e}")
+    threading.Thread(target=_warm_rag, daemon=True).start()
 
 @app.get("/health")
 def health():
@@ -1003,3 +1019,64 @@ async def websocket_hire(websocket: WebSocket, id: str):
                 await websocket.send_json(hire_data.model_dump())
     except WebSocketDisconnect:
         ws_manager.disconnect(id, websocket)
+
+
+# ---------------------------------------------------------------------------
+# Admin: Knowledge Base endpoints  (Phase 1 — RAG management)
+# ---------------------------------------------------------------------------
+
+@app.get("/admin/kb/stats")
+def kb_stats():
+    """
+    Returns knowledge base statistics:
+    chunk count, ChromaDB vector count, BM25 status, docs indexed, teams covered.
+    """
+    try:
+        stats = retriever.get_stats()
+        return {
+            "status": "ok",
+            "total_chunks": stats["total_chunks"],
+            "chroma_vectors": stats["chroma_vectors"],
+            "bm25_ready": stats["bm25_ready"],
+            "docs": stats["docs"],
+            "teams_covered": stats["teams_covered"],
+        }
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"KB stats error: {exc}")
+
+
+@app.post("/admin/kb/reindex")
+def kb_reindex():
+    """
+    Forces a full re-index of all company documents:
+    re-embeds every chunk via OpenAI and rebuilds BM25.
+    Use after adding or modifying documents in the docs directory.
+    """
+    try:
+        retriever.reindex()
+        stats = retriever.get_stats()
+        return {
+            "status": "reindexed",
+            "total_chunks": stats["total_chunks"],
+            "chroma_vectors": stats["chroma_vectors"],
+        }
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Reindex error: {exc}")
+
+
+@app.post("/admin/kb/search")
+def kb_search(payload: dict):
+    """
+    Debug endpoint: run a hybrid search against the KB and return raw chunk results.
+    Body: { "query": "...", "top_k": 5, "team_filter": "Backend Platform" }
+    """
+    query = payload.get("query", "")
+    top_k = int(payload.get("top_k", 5))
+    team_filter = payload.get("team_filter") or None
+    if not query:
+        raise HTTPException(status_code=400, detail="query is required")
+    try:
+        results = retriever.hybrid_search(query, top_k=top_k, team_filter=team_filter)
+        return {"query": query, "top_k": top_k, "results": results}
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Search error: {exc}")
