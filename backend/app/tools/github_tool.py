@@ -136,8 +136,12 @@ class GitHubTool:
     # ------------------------------------------------------------------
 
     def _fetch_evidence(self, username: str) -> Dict[str, Any]:
+        # Fast path: in test/mock mode or if no token configured and user is a seeded demo profile
+        if username.lower() in _DEMO_PROFILES and (getattr(settings, "MOCK_LLM_MODE", False) or not self.token):
+            return self._fallback_or_unavailable(username, "Demo profile loaded", demo_check=True)
+
         try:
-            with httpx.Client(headers=self.headers, timeout=15.0) as client:
+            with httpx.Client(headers=self.headers, timeout=10.0) as client:
                 # 1. Verify user exists
                 user_res = client.get(f"https://api.github.com/users/{username}")
 

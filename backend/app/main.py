@@ -14,7 +14,7 @@ import pypdf
 from sqlalchemy.orm import Session
 
 from backend.app.config import settings
-from backend.app.db import engine, get_db, Base, init_db_schema
+from backend.app.db import engine, get_db, Base, init_db_schema, SessionLocal
 from backend.app.models import (
     EmployeeModel,
     IdentityProposalModel,
@@ -104,26 +104,14 @@ ws_manager = ConnectionManager()
 
 @app.on_event("startup")
 def startup_event():
-    """Initializes tables, seeds the mock directory, demo employees, and warms up the RAG vector index."""
-    with next(get_db()) as db:
+    """Initializes tables, seeds the mock directory and demo employees."""
+    db = SessionLocal()
+    try:
         init_mock_directory(db)
         init_demo_database(db)
+    finally:
+        db.close()
     logger.info("OnboardOS backend initialized with seed directory and demo hires.")
-
-    # Warm up RAG: load docs, build BM25, embed new chunks to ChromaDB
-    # Runs in background so startup is not blocked if OpenAI is slow
-    import threading
-    def _warm_rag():
-        try:
-            retriever.initialize()
-            stats = retriever.get_stats()
-            logger.info(
-                f"RAG warm-up complete: {stats['total_chunks']} chunks, "
-                f"{stats['chroma_vectors']} vectors in ChromaDB."
-            )
-        except Exception as e:
-            logger.error(f"RAG warm-up failed (non-fatal): {e}")
-    threading.Thread(target=_warm_rag, daemon=True).start()
 
 @app.get("/health")
 def health():

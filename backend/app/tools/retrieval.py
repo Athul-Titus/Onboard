@@ -96,30 +96,50 @@ def _infer_team(doc_name: str) -> Optional[str]:
 # Embedding helper (OpenAI text-embedding-3-small)
 # ---------------------------------------------------------------------------
 
+def _mock_embeddings(texts: List[str], dim: int = 1536) -> List[List[float]]:
+    """Generates deterministic pseudo-embeddings for offline/test environments."""
+    vectors = []
+    for text in texts:
+        h = hashlib.sha256(text.encode("utf-8")).digest()
+        raw = [(b / 255.0) - 0.5 for b in h]
+        repeated = (raw * ((dim // len(raw)) + 1))[:dim]
+        norm = (sum(x * x for x in repeated) ** 0.5) or 1.0
+        vectors.append([x / norm for x in repeated])
+    return vectors
+
+
 def _embed_texts(texts: List[str], api_key: str, batch_size: int = 100) -> List[List[float]]:
     """
     Embeds a list of texts using OpenAI text-embedding-3-small.
     Returns a list of float vectors in the same order as input.
     Batches requests to stay within API limits.
+    Falls back gracefully to deterministic vectors if network is unavailable or mock mode is on.
     """
-    import openai
+    if getattr(settings, "MOCK_LLM_MODE", False) or not api_key:
+        return _mock_embeddings(texts)
 
-    client = openai.OpenAI(api_key=api_key)
-    all_embeddings: List[List[float]] = []
+    try:
+        import openai
 
-    for i in range(0, len(texts), batch_size):
-        batch = texts[i : i + batch_size]
-        # Clean texts: replace newlines with spaces (OpenAI recommendation)
-        batch_cleaned = [t.replace("\n", " ").strip() for t in batch]
-        response = client.embeddings.create(
-            input=batch_cleaned,
-            model="text-embedding-3-small",
-        )
-        # response.data is sorted by index
-        sorted_data = sorted(response.data, key=lambda x: x.index)
-        all_embeddings.extend([item.embedding for item in sorted_data])
+        client = openai.OpenAI(api_key=api_key)
+        all_embeddings: List[List[float]] = []
 
-    return all_embeddings
+        for i in range(0, len(texts), batch_size):
+            batch = texts[i : i + batch_size]
+            # Clean texts: replace newlines with spaces (OpenAI recommendation)
+            batch_cleaned = [t.replace("\n", " ").strip() for t in batch]
+            response = client.embeddings.create(
+                input=batch_cleaned,
+                model="text-embedding-3-small",
+            )
+            # response.data is sorted by index
+            sorted_data = sorted(response.data, key=lambda x: x.index)
+            all_embeddings.extend([item.embedding for item in sorted_data])
+
+        return all_embeddings
+    except Exception as exc:
+        logger.warning(f"OpenAI embedding call failed ({exc}); falling back to deterministic vectors.")
+        return _mock_embeddings(texts)
 
 
 # ---------------------------------------------------------------------------
