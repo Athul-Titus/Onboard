@@ -268,7 +268,8 @@ class HybridRetriever:
         chroma_count = 0
         try:
             col = self._get_or_create_collection()
-            chroma_count = col.count()
+            if col is not None:
+                chroma_count = col.count()
         except Exception:
             pass
         return {
@@ -347,21 +348,29 @@ class HybridRetriever:
         if self._chroma_collection is not None:
             return self._chroma_collection
 
-        import chromadb
-        from chromadb.config import Settings as ChromaSettings
+        try:
+            import chromadb
+            from chromadb.config import Settings as ChromaSettings
+        except ImportError:
+            logger.warning("chromadb is not installed; running in sparse-only (BM25) mode.")
+            return None
 
-        persist_dir = str(settings.CHROMA_PERSIST_DIR)
-        os.makedirs(persist_dir, exist_ok=True)
+        try:
+            persist_dir = str(settings.CHROMA_PERSIST_DIR)
+            os.makedirs(persist_dir, exist_ok=True)
 
-        client = chromadb.PersistentClient(
-            path=persist_dir,
-            settings=ChromaSettings(anonymized_telemetry=False),
-        )
-        self._chroma_collection = client.get_or_create_collection(
-            name=self.COLLECTION_NAME,
-            metadata={"hnsw:space": "cosine"},
-        )
-        return self._chroma_collection
+            client = chromadb.PersistentClient(
+                path=persist_dir,
+                settings=ChromaSettings(anonymized_telemetry=False),
+            )
+            self._chroma_collection = client.get_or_create_collection(
+                name=self.COLLECTION_NAME,
+                metadata={"hnsw:space": "cosine"},
+            )
+            return self._chroma_collection
+        except Exception as exc:
+            logger.warning(f"Could not initialize ChromaDB ({exc}); falling back to sparse-only.")
+            return None
 
     def _sync_chroma(self, chunks: List[DocChunk], force: bool = False) -> None:
         """
@@ -369,6 +378,10 @@ class HybridRetriever:
         Only re-embeds chunks whose IDs are not already in the collection.
         This saves API cost on restarts — only NEW or CHANGED chunks are re-embedded.
         """
+        col = self._get_or_create_collection()
+        if col is None:
+            return
+
         api_key = settings.OPENAI_API_KEY
         if not api_key:
             logger.warning(
@@ -376,8 +389,6 @@ class HybridRetriever:
                 "Only BM25 will be used."
             )
             return
-
-        col = self._get_or_create_collection()
 
         if force:
             # Wipe and rebuild
@@ -435,7 +446,7 @@ class HybridRetriever:
 
         try:
             col = self._get_or_create_collection()
-            if col.count() == 0:
+            if col is None or col.count() == 0:
                 return []
 
             query_embedding = _embed_texts([query], api_key)[0]

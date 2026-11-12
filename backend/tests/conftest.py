@@ -12,3 +12,4 @@ def setup_test_environment():
     settings.MOCK_LLM_MODE = True
     yield
     settings.MOCK_LLM_MODE = original_mock
+
